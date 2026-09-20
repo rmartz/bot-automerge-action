@@ -70,13 +70,12 @@ a Dependabot bump of `@rmartz/bot-automerge` ships a new Action version. PR titl
 are Conventional Commits and the repo squash-merges using the PR title, so a
 non-conventional title makes semantic-release skip the release.
 
-## Bootstrap → dogfood cutover
+## Self-dogfooding
 
-Until the first `bot-automerge-action` release exists, this repo cannot dogfood its
-**own** action, so `.github/workflows/bot-automerge.yml` calls
-`@rmartz/bot-automerge`'s reusable workflow (`@<sha> # v0.1.1`). **After the first
-release, flip that caller to `uses: ./`** (the local action) — the exact shape every
-consumer uses. The flip instructions live inline in that workflow file.
+This repo dogfoods its **own** action: `.github/workflows/bot-automerge.yml` calls
+the local action (`uses: ./`) on this repo's own bot PRs — the exact shape every
+consumer uses. (Before the first release existed it bootstrapped off
+`@rmartz/bot-automerge`'s reusable workflow; that cutover is done.)
 
 ## Worktrees & PRs
 

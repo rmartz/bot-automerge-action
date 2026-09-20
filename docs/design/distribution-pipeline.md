@@ -44,14 +44,14 @@ the PR `feat!:` to cut a major.
    version this release pins, so it takes effect the moment the consumer merges the
    bump — no edit to their caller.
 
-## Bootstrap — until the first release exists
+## Self-dogfooding
 
-This repo cannot dogfood its **own** action until it has cut a release, so during the
-bootstrap phase [`bot-automerge.yml`](../../.github/workflows/bot-automerge.yml)
-calls `@rmartz/bot-automerge`'s reusable workflow (`@<sha> # v0.1.1`) instead of
-`uses: ./`. After the first `bot-automerge-action` release, that caller flips to the
-local action — the exact shape every consumer uses. The flip instructions live inline
-in the workflow file.
+This repo dogfoods its **own** action:
+[`bot-automerge.yml`](../../.github/workflows/bot-automerge.yml) calls the local
+action (`uses: ./`) on this repo's own bot PRs — the exact shape every consumer
+uses, so the wrapper is exercised end to end on every Dependabot bump. Before the
+first release existed it bootstrapped off `@rmartz/bot-automerge`'s reusable workflow
+(`@<sha> # v0.1.1`); that cutover is done.
 
 ## Why an Action, not a reusable workflow
 
