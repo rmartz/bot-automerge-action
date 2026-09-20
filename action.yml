@@ -19,6 +19,9 @@ branding:
 # EXPLICIT input (`release-please-token`), not inherited — see docs/consuming.md.
 
 inputs:
+  # `pr` has no default: GitHub does not allow the `github` expression context
+  # in composite-action input `default:` values. Pass it explicitly in the caller
+  # (e.g. `pr: ${{ github.event.pull_request.number }}`).
   pr:
     description: >-
       PR number to classify and enable auto-merge for
