@@ -6,42 +6,31 @@ name: bot-automerge
 # gated on the required checks (including merge-safety), so nothing merges ahead of
 # CI.
 #
-# BOOTSTRAP PHASE: until this repo cuts its first `bot-automerge-action` release, it
-# cannot dogfood its OWN action, so it calls @rmartz/bot-automerge's reusable
-# workflow (the mechanism this action is the successor to). The `@<sha>` pin is
-# bumped by Dependabot's github-actions ecosystem.
-#
-# AFTER THE FIRST RELEASE, flip this to the local action to dogfood ourselves — the
-# exact shape every consumer will use (see docs/consuming.md):
-#
-#   permissions:
-#     contents: write
-#     pull-requests: write
-#     packages: read
-#   jobs:
-#     bot-automerge:
-#       runs-on: ubuntu-latest
-#       steps:
-#         - uses: actions/checkout@<sha>  # v7.0.1
-#         - uses: ./
-#           with:
-#             pr: ${{ github.event.pull_request.number }}
-#             release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
-#
-# A reusable workflow can't declare its own triggers or hold write scopes, so this
-# caller carries the trigger and grants the write permissions; the classification
-# logic, concurrency, and CLI install live in the reusable workflow.
+# This calls the LOCAL action (`uses: ./`) — the exact shape every consumer uses
+# (see docs/consuming.md). A composite action cannot declare its own triggers, hold
+# write scopes, or use `secrets: inherit`, so this caller carries the trigger,
+# grants the write permissions, and passes the release-please PAT as an explicit
+# input (`release-please-token`). This repo publishes via semantic-release, not
+# release-please, so its own bot PRs take the Dependabot path; the release-please
+# input is passed for parity with the consumer contract and falls back to the job
+# token when the secret is unset.
 
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, labeled]
 
 permissions:
-  contents: write
-  pull-requests: write
-  packages: read
+  contents: write # enable GitHub-native auto-merge on the PR
+  pull-requests: write # read PR metadata + turn on auto-merge
+  packages: read # install the @rmartz/bot-automerge CLI from GitHub Packages
 
 jobs:
   bot-automerge:
-    uses: rmartz/bot-automerge/.github/workflows/bot-automerge.yml@139f4ce609c2dfe65f1e090c00f17204bfce1b3e # v0.1.1
-    secrets: inherit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
