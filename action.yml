@@ -1,0 +1,107 @@
+name: 'bot-automerge'
+description: 'Enable GitHub-native auto-merge for trustworthy bot PRs (Dependabot patch/minor bumps, release-please release PRs) via the @rmartz/bot-automerge CLI.'
+author: 'rmartz'
+
+branding:
+  icon: 'git-merge'
+  color: 'green'
+
+# A composite action that wraps the @rmartz/bot-automerge CLI. The consuming repo's
+# caller job runs on pull_request_target and grants contents:write +
+# pull-requests:write (+ packages:read for the install); this action classifies the
+# PR and, when it is a trusted bot bump, enables GitHub-native auto-merge. The CLI
+# version is the one pinned in this action's package-lock.json (bumped by Dependabot
+# + released as a new action version), so a given action ref enforces a reproducible
+# eligibility policy. See docs/design/integration-contract.md.
+#
+# NOTE: a composite action CANNOT use `secrets: inherit` (that is a
+# reusable-workflow-only feature), so the release-please PAT is passed as an
+# EXPLICIT input (`release-please-token`), not inherited — see docs/consuming.md.
+
+inputs:
+  pr:
+    description: >-
+      PR number to classify and enable auto-merge for
+      (e.g. ${{ github.event.pull_request.number }}).
+    required: true
+  token:
+    description: >-
+      Token used to install @rmartz/bot-automerge from GitHub Packages and, on the
+      Dependabot path, to enable auto-merge. Defaults to the workflow GITHUB_TOKEN,
+      which needs contents:write + pull-requests:write + packages:read on the job.
+    required: false
+    default: ${{ github.token }}
+  release-please-token:
+    description: >-
+      Token used to enable auto-merge on the release-please / other-bot path.
+      Enabling auto-merge with a real-actor PAT here (rather than GITHUB_TOKEN) lets
+      the merged release PR re-trigger the consumer's release CD — a GITHUB_TOKEN
+      merge does not fire further workflows (bot-automerge#8). Falls back to `token`
+      when unset.
+    required: false
+    default: ''
+  update-type:
+    description: >-
+      Optional override for the Dependabot semver update-type
+      (version-update:semver-patch | :semver-minor | :semver-major). Empty (the
+      default) derives it via dependabot/fetch-metadata for dependabot[bot] PRs.
+      Ignored on non-Dependabot PRs.
+    required: false
+    default: ''
+  node-version:
+    description: 'Node.js version to run the CLI under.'
+    required: false
+    default: '22'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: https://npm.pkg.github.com
+        scope: '@rmartz'
+    # Install the pinned CLI into this action's own directory — $GITHUB_ACTION_PATH
+    # holds this action's package.json + lockfile — not the consumer workspace.
+    - name: Install pinned @rmartz/bot-automerge
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
+      run: npm ci
+    # A Dependabot PR carries a semver update-type; fetch it (unless overridden via
+    # the update-type input) and pass it so the CLI enables auto-merge only on
+    # patch/minor. The guard keys off the PR author, robust across
+    # opened/synchronize/labeled — unlike github.actor, which can be a human who
+    # relabeled the PR.
+    - name: Fetch Dependabot metadata
+      id: metadata
+      if: github.event.pull_request.user.login == 'dependabot[bot]' && inputs.update-type == ''
+      uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      with:
+        github-token: ${{ inputs.token }}
+    - name: Enable auto-merge (Dependabot)
+      if: github.event.pull_request.user.login == 'dependabot[bot]'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ inputs.pr }}
+        REPO: ${{ github.repository }}
+        UPDATE_TYPE: ${{ inputs.update-type != '' && inputs.update-type || steps.metadata.outputs.update-type }}
+      run: >-
+        "${GITHUB_ACTION_PATH}/node_modules/.bin/ai-bot-automerge" enable
+        --pr "${PR_NUMBER}" --repo "${REPO}" --update-type "${UPDATE_TYPE}"
+    # Any other author (release-please or another bot) — the CLI detects
+    # release-please itself and no-ops on anything it does not trust. No update-type
+    # is passed on this path. Uses the real-actor PAT when provided so a merged
+    # release PR re-triggers the consumer's release CD; falls back to `token`.
+    - name: Enable auto-merge (release-please / other bot)
+      if: github.event.pull_request.user.login != 'dependabot[bot]'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.release-please-token != '' && inputs.release-please-token || inputs.token }}
+        PR_NUMBER: ${{ inputs.pr }}
+        REPO: ${{ github.repository }}
+      run: >-
+        "${GITHUB_ACTION_PATH}/node_modules/.bin/ai-bot-automerge" enable
+        --pr "${PR_NUMBER}" --repo "${REPO}"

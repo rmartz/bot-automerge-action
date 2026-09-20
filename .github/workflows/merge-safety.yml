@@ -1,0 +1,35 @@
+name: merge-safety
+
+# Thin caller of the @rmartz/merge-safety reusable workflow. It posts the
+# `merge-safety` check-run carrying the base-currency / breaking-change / conflict
+# verdict and re-holds open PRs when main moves, so a PR auto-merges only once it is
+# genuinely safe against the current base. The `@<sha>` pin is bumped by Dependabot.
+# See https://github.com/rmartz/merge-safety/blob/main/docs/consuming.md.
+#
+# THE CHECK-RUN NAME `merge-safety` IS A FLEET CONTRACT — it is required on the
+# default branch and the auto-merge gate keys off it; never rename it here.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to evaluate
+        required: true
+
+permissions:
+  checks: write # post/flip the merge-safety check-run
+  pull-requests: write # reconcile update-required / merge-conflict labels
+  contents: read
+  actions: write # dispatch per-PR evaluate runs on the push fan-out
+  packages: read # install the CLI from GitHub Packages
+
+jobs:
+  merge-safety:
+    uses: rmartz/merge-safety/.github/workflows/merge-safety.yml@db145fb8c20164185eb9e1a1c237dc4d9085c69f # v0.1.0
+    with:
+      pr: ${{ inputs.pr }}
+    secrets: inherit

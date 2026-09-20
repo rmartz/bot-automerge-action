@@ -1,0 +1,47 @@
+name: bot-automerge
+
+# This repo dogfoods bot-automerge on itself: it enables GitHub-native auto-merge
+# for its own trustworthy bot PRs — Dependabot patch/minor bumps (including the
+# @rmartz/bot-automerge CLI bump that drives our own releases) and release PRs —
+# gated on the required checks (including merge-safety), so nothing merges ahead of
+# CI.
+#
+# BOOTSTRAP PHASE: until this repo cuts its first `bot-automerge-action` release, it
+# cannot dogfood its OWN action, so it calls @rmartz/bot-automerge's reusable
+# workflow (the mechanism this action is the successor to). The `@<sha>` pin is
+# bumped by Dependabot's github-actions ecosystem.
+#
+# AFTER THE FIRST RELEASE, flip this to the local action to dogfood ourselves — the
+# exact shape every consumer will use (see docs/consuming.md):
+#
+#   permissions:
+#     contents: write
+#     pull-requests: write
+#     packages: read
+#   jobs:
+#     bot-automerge:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@<sha>  # v7.0.1
+#         - uses: ./
+#           with:
+#             pr: ${{ github.event.pull_request.number }}
+#             release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+#
+# A reusable workflow can't declare its own triggers or hold write scopes, so this
+# caller carries the trigger and grants the write permissions; the classification
+# logic, concurrency, and CLI install live in the reusable workflow.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: read
+
+jobs:
+  bot-automerge:
+    uses: rmartz/bot-automerge/.github/workflows/bot-automerge.yml@139f4ce609c2dfe65f1e090c00f17204bfce1b3e # v0.1.1
+    secrets: inherit

@@ -1,0 +1,102 @@
+# bot-automerge-action
+
+A composite GitHub Action that enables GitHub-native auto-merge for the
+**trustworthy bot pull requests** a repo chooses to trust — Dependabot
+`patch`/`minor` bumps and release-please release PRs — using the
+[`@rmartz/bot-automerge`](https://github.com/rmartz/bot-automerge) CLI. It is
+packaged so that:
+
+1. **Updates propagate automatically.** Consuming repos pin this Action by version;
+   Dependabot's `github-actions` ecosystem opens PRs to bump that pin on its normal
+   schedule.
+2. **New eligibility logic is low-friction.** The classification logic ships inside
+   the pinned `@rmartz/bot-automerge` CLI; consumers pick up new behavior on the
+   next Dependabot bump with no per-repo YAML edits.
+
+The eligibility _logic_ lives in `@rmartz/bot-automerge`. This repo only wraps its
+CLI in an Action step, holds the CLI as a pinned dependency, and re-releases itself
+whenever Dependabot bumps that pin — so the whole chain from new logic to a
+consumer's CI runs itself.
+
+This Action is the **successor** to `@rmartz/bot-automerge`'s reusable workflow
+(`bot-automerge.yml`). Consumers migrate from the reusable-workflow caller to this
+Action; once the fleet has migrated, the reusable workflow is retired. See
+[the integration contract](docs/design/integration-contract.md) and
+[the distribution pipeline](docs/design/distribution-pipeline.md).
+
+## Using it in a consuming repo
+
+Add one caller workflow. Because enabling auto-merge on a Dependabot PR needs
+base-context write, the caller triggers on `pull_request_target` and grants write
+scopes — a composite Action **cannot** declare its own triggers or use
+`secrets: inherit`, so the caller owns both and passes any PAT as an explicit
+input:
+
+```yaml
+# .github/workflows/bot-automerge.yml
+name: bot-automerge
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: read
+
+jobs:
+  bot-automerge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@<sha> # v7.0.1
+      - uses: rmartz/bot-automerge-action@<sha> # vX.Y.Z
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+```
+
+> **Require `merge-safety` + your CI checks on the default branch _before_ adopting
+> this.** `gh pr merge --auto` merges a PR immediately if the repo has no required
+> status checks — this Action only makes a bot PR _eligible_ to auto-merge; the
+> repo's required checks are what it waits on. See the
+> [consumer setup guide](docs/consuming.md) for the full prerequisite.
+
+The public `@rmartz/bot-automerge` package on GitHub Packages is readable with the
+built-in `GITHUB_TOKEN` (grant `packages: read`) — no PAT for the install.
+
+### Inputs
+
+| Input                  | Default               | Meaning                                                                               |
+| ---------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                      |
+| `token`                | `${{ github.token }}` | Installs the CLI from GitHub Packages; also the Dependabot-path enable GH token.      |
+| `release-please-token` | `''` (→ `token`)      | Real-actor PAT for the release-please path so the merge re-triggers release CD.       |
+| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via fetch-metadata. |
+| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                   |
+
+There is no `version` input — the CLI version is the one pinned in this Action's
+lockfile.
+
+## How it relates to `@rmartz/bot-automerge`
+
+This Action is the successor to that package's reusable workflow. It carries **no
+check-run** (unlike [`@rmartz/merge-safety`](https://github.com/rmartz/merge-safety))
+— it is purely an eligibility enabler. See
+[the eligibility contract](https://github.com/rmartz/bot-automerge/blob/main/docs/bot-automerge-contract.md).
+
+## Documentation
+
+Full docs, written in [Open Knowledge Format](docs/okf-format.md), start at
+[docs/index.md](docs/index.md).
+
+## Releases
+
+Versioned by [semantic-release](https://semantic-release.gitbook.io/): a merge to
+`main` cuts the tag + GitHub Release. It publishes no package and commits nothing
+back. A Dependabot `chore(deps)` bump of `@rmartz/bot-automerge` cuts a patch
+release, which is how new eligibility logic reaches consumers.
+
+---
+
+🤖 Created by Claude Opus 4.8
