@@ -21,8 +21,12 @@ branding:
 inputs:
   pr:
     description: >-
-      PR number to classify and enable auto-merge for
-      (e.g. ${{ github.event.pull_request.number }}).
+      PR number to classify and enable auto-merge for. Pass the pull_request
+      event's number from your caller (github.event.pull_request.number) — see
+      docs/consuming.md for the caller snippet. This text must not contain a
+      template expression: an action manifest validates expressions in input
+      metadata against a context where github is unavailable, so one here fails the
+      action load.
     required: true
   token:
     description: >-
