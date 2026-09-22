@@ -16,7 +16,8 @@ picking it up.
 1. **CLI bump.** `@rmartz/bot-automerge` publishes a new version to GitHub Packages.
    Dependabot's npm ecosystem (with the `github-packages` registry auth wired in
    [`dependabot.yml`](../../.github/dependabot.yml)) opens a PR bumping the pinned
-   dependency + lockfile, titled `chore(deps): bump @rmartz/bot-automerge …`.
+   dependency + lockfile, titled `fix(deps): bump @rmartz/bot-automerge …` (the
+   npm ecosystem uses `commit-message.prefix: fix` for production deps).
 2. **Auto-merge.** This repo dogfoods bot-automerge on itself
    ([`bot-automerge.yml`](../../.github/workflows/bot-automerge.yml)): the caller
    classifies the bump as a trusted Dependabot patch/minor and enables native
@@ -25,8 +26,9 @@ picking it up.
    merges ahead of green.
 3. **Release.** On merge to `main`,
    [`release.yml`](../../.github/workflows/release.yml) runs semantic-release.
-   [`.releaserc.json`](../../.releaserc.json) maps `chore(deps)` → **patch**, so the
-   CLI bump cuts a new tag + GitHub Release. The release publishes nothing to a
+   [`.releaserc.json`](../../.releaserc.json) uses the conventionalcommits preset,
+   which maps `fix` → **patch**, so the CLI bump cuts a new tag + GitHub Release.
+   The release publishes nothing to a
    registry and commits nothing back (no `@semantic-release/npm`, no
    `@semantic-release/git`), so the built-in `GITHUB_TOKEN` suffices — no PAT.
 
