@@ -1,6 +1,6 @@
 # @rmartz/repo-hygiene check configuration for this repo.
 #
-# This repo consumes @rmartz/repo-hygiene through the standard reusable-workflow
+# This repo consumes @rmartz/repo-hygiene through the standard composite-Action
 # caller (.github/workflows/repo-hygiene.yml), which runs the explicit check list
 # there against our own tree. Each section under `checks` is read by the check of
 # that name; `severity` (when set) overrides that check's default findings.
