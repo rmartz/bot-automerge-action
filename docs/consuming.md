@@ -27,6 +27,11 @@ permissions:
 
 jobs:
   bot-automerge:
+    # Skip PRs the CLI could never trust — see "Skip PRs that can never qualify".
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]'
+      || startsWith(github.event.pull_request.head.ref, 'release-please--')
+      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -53,6 +58,45 @@ Why each piece is there:
   (`${{ secrets.RELEASE_PLEASE_PAT }}`) if you use release-please and want a merged
   release PR to re-trigger your release CD; omit it otherwise (it falls back to the
   job token).
+
+## Skip PRs that can never qualify
+
+The `if:` guard on the job is an optimisation, not a gate — the CLI already no-ops
+on anything it does not trust. Without it, every human PR pays for a checkout, a
+Node setup and an `npm ci` just to conclude "not a bot PR". With it, those PRs
+resolve as `skipped` for free.
+
+The three conditions mirror the CLI's own classifier exactly, so nothing eligible
+is skipped:
+
+| Condition                                         | Why                                                   |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| `user.login == 'dependabot[bot]'`                 | Dependabot is detected by author.                     |
+| `startsWith(head.ref, 'release-please--')`        | release-please's default branch prefix.               |
+| `contains(labels.*.name, 'autorelease: pending')` | release-please's label, for a customised branch name. |
+
+> Do **not** simplify this to an author test such as
+> `endsWith(github.event.pull_request.user.login, '[bot]')`. A release-please PR is
+> only authored by a `[bot]` account when release-please runs under the default
+> `GITHUB_TOKEN` — run it under a PAT (which is what `release-please-token` is for)
+> and the PR is authored by that real user, so an author-only guard would silently
+> skip exactly the release PRs you wanted merged.
+
+## Do not add a `concurrency:` group
+
+The caller above deliberately has none, and a burst of `pull_request_target` events
+on one PR will start several overlapping runs. That is the intended trade.
+
+GitHub permits only **one pending run per concurrency group** and cancels any run it
+supersedes, so a group leaves `cancelled` check-runs on the PR — a conclusion many
+merge-gating and triage tools read as a failure, and one indistinguishable from a
+genuine timeout. The bursts are routine, not pathological: opening a PR and applying
+three labels fires four events in about a second.
+
+The runs a group would have deduplicated are short, idempotent (`gh pr merge --auto`
+is a no-op when auto-merge is already on) and, with the skip guard above, usually
+`skipped`. If you want to cut them further, trim the trigger list rather than adding
+a group — `edited` in particular fires every time Dependabot rewrites a PR body.
 
 ## Prerequisite — require `merge-safety` + your CI first
 
