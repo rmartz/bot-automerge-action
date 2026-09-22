@@ -39,9 +39,12 @@ picking it up.
    instead.
 
 A **major** CLI bump falls out of the auto-merge set into its own PR for a human to
-review; merging it still cuts a patch Action release (auto-classification cannot
-infer consumer-facing breakage), so a reviewer who judges the change breaking retitles
-the PR `feat!:` to cut a major.
+review. A CLI major is the strongest signal of consumer-facing breakage, so the
+default is to propagate it as a **major** Action release — retitle the PR with a
+breaking marker (`fix(deps)!:` / `feat!:`) before merging — and downgrade only when
+the reviewer confirms the break is invisible to Action consumers. The full rule,
+including how a breaking change is propagated even when it reaches this repo only as
+a dependency bump, is the [versioning policy](versioning.md).
 
 ## Picking it up (consumers)
 

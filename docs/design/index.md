@@ -9,3 +9,6 @@ logic reaches consumers with no per-repo work.
 - [The distribution pipeline](distribution-pipeline.md) — the CLI bump →
   bot-automerge → release → consumer Dependabot chain that ships new versions
   automatically.
+- [The versioning policy](versioning.md) — why the Action carries its own SemVer
+  line independent of the CLI, and how a consumer-facing breaking change is
+  propagated as a major release even when it arrives only as a dependency bump.
