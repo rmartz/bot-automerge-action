@@ -31,6 +31,12 @@ picking it up.
    The release publishes nothing to a
    registry and commits nothing back (no `@semantic-release/npm`, no
    `@semantic-release/git`), so the built-in `GITHUB_TOKEN` suffices — no PAT.
+   Because `release.yml` only runs post-merge, a broken release toolchain would
+   otherwise surface only after an auto-merged bump lands and silently stall this
+   chain. The `Release dry-run` job in [`ci.yml`](../../.github/workflows/ci.yml)
+   guards against that by rendering the release notes on every PR via a
+   `--dry-run` semantic-release invocation, so a toolchain regression fails the PR
+   instead.
 
 A **major** CLI bump falls out of the auto-merge set into its own PR for a human to
 review; merging it still cuts a patch Action release (auto-classification cannot
