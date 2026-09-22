@@ -39,8 +39,11 @@ updates:
     commit-message:
       # Production deps ship inside the released Action, so their bump must cut a
       # release: prefix `fix` (→ patch via semantic-release's conventionalcommits
-      # preset). Dev deps never reach the shipped artifact, so `prefix-development:
-      # chore` keeps them release-less. (Codified in rmartz/ai#82.)
+      # preset). This is only the *initial* title — the dependabot-release-type
+      # workflow rewrites it to mirror the CLI's semver bump (minor → feat(deps),
+      # major → feat(deps)! + breaking-change label) so the Action release matches.
+      # Dev deps never reach the shipped artifact, so `prefix-development: chore`
+      # keeps them release-less. (Codified in rmartz/ai#82.)
       prefix: fix
       prefix-development: chore
       include: scope
