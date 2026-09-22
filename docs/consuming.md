@@ -7,11 +7,63 @@ tags: [consumer, setup, ci, auto-merge]
 
 # Using bot-automerge-action in a consuming repo
 
-Add one caller workflow. Unlike a read-only hygiene check, this caller is **not**
-trigger-free: enabling auto-merge on a Dependabot PR needs base-context write, so
-the caller triggers on `pull_request_target`, grants write scopes, and passes any
-PAT as an **explicit input** — a composite Action cannot declare its own triggers or
-use `secrets: inherit`.
+Add one caller workflow, in one of two shapes. Both enforce the same eligibility
+policy from the same pinned CLI, both pin by SHA, and both are bumped by
+Dependabot's `github-actions` ecosystem — they differ only in what your repo owns.
+
+|                                   | [Reusable workflow](#shape-a--the-reusable-workflow-recommended) | [Composite Action](#shape-b--the-composite-action) |
+| --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- |
+| Caller size                       | 3 lines                                                          | a full job                                         |
+| Skip guard for non-bot PRs        | **built in**                                                     | you copy it in                                     |
+| release-please PAT                | `secrets: inherit`                                               | explicit input                                     |
+| You control the job's other steps | no                                                               | yes                                                |
+
+**Prefer the reusable workflow** unless you need the Action as a step inside a job
+you already own. The skip guard mirrors the CLI's classifier, so keeping a private
+copy of it in your repo means keeping it in sync by hand — nothing bumps an inline
+`if:` expression when the classifier changes.
+
+Unlike a read-only hygiene check, this caller is **not** trigger-free: enabling
+auto-merge on a Dependabot PR needs base-context write, so the caller triggers on
+`pull_request_target` and grants write scopes.
+
+## Shape A — the reusable workflow (recommended)
+
+```yaml
+# .github/workflows/bot-automerge.yml
+name: bot-automerge
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: write # enable GitHub-native auto-merge on the PR
+  pull-requests: write # read PR metadata + turn on auto-merge
+  packages: read # install the public @rmartz/bot-automerge package
+
+jobs:
+  bot-automerge:
+    uses: rmartz/bot-automerge-action/.github/workflows/bot-automerge-reusable.yml@<sha> # vX.Y.Z
+    secrets: inherit
+```
+
+That is the whole caller. Notes:
+
+- **Grant all three scopes.** A called workflow runs with the _intersection_ of the
+  scopes it declares and the scopes you grant, so omitting one fails the run at
+  startup validation.
+- **`secrets: inherit`** threads `RELEASE_PLEASE_PAT` through automatically. Nothing
+  to pass by hand, and nothing to forget — see
+  [the PAT note](#why-release-please-token-matters) below.
+- **The skip guard is built in.** A PR the CLI could never trust resolves as
+  `skipped` without starting a runner. No `if:` in your repo to keep current.
+- **No `pr:` input needed** — it defaults to the caller's own `pull_request` event.
+  Pass it only when calling from an event with no PR, such as `workflow_dispatch`.
+
+## Shape B — the composite Action
+
+Use this when you want the step inside a job you already own. You then own the job,
+which means you own the skip guard too.
 
 ```yaml
 # .github/workflows/bot-automerge.yml
@@ -54,12 +106,17 @@ Why each piece is there:
   both run as a step in your job; a plain `actions/checkout` before the step is
   enough (the Action reads no repo history).
 - **`pr`** is required — pass `${{ github.event.pull_request.number }}`.
+
+### Why `release-please-token` matters
+
 - **`release-please-token`** is optional. Set it to a real-actor PAT
   (`${{ secrets.RELEASE_PLEASE_PAT }}`) if you use release-please and want a merged
   release PR to re-trigger your release CD; omit it otherwise (it falls back to the
   job token).
 
-## Skip PRs that can never qualify
+## Skip PRs that can never qualify (Shape B only)
+
+> Shape A has this built in. This section applies only if you own the job.
 
 The `if:` guard on the job is an optimisation, not a gate — the CLI already no-ops
 on anything it does not trust. Without it, every human PR pays for a checkout, a
@@ -129,11 +186,20 @@ Dependabot opens a PR bumping the SHA + comment to each new release. New eligibi
 logic ships inside that release and takes effect with no edit to your caller — see
 [the distribution pipeline](design/distribution-pipeline.md).
 
-## Migrating from the reusable workflow
+## Migrating from `@rmartz/bot-automerge`'s reusable workflow
 
 If you currently call `@rmartz/bot-automerge`'s reusable workflow
 (`uses: rmartz/bot-automerge/.github/workflows/bot-automerge.yml@<sha>` with
-`secrets: inherit`), replace that job with the step-based caller above. The two key
-differences: the caller now owns `runs-on` + `steps` (with a checkout), and
-`secrets: inherit` becomes the explicit `release-please-token` input. Everything
-else — the trigger, the write scopes, the eligibility behavior — is unchanged.
+`secrets: inherit`), the smallest migration is to **Shape A**: change the `uses:`
+path to this repo's `bot-automerge-reusable.yml` and keep `secrets: inherit`. The
+trigger, the write scopes and the eligibility behaviour are unchanged; you gain the
+built-in skip guard.
+
+Migrate to **Shape B** instead only if you want to own the job. Then the caller
+takes `runs-on` + `steps`, `secrets: inherit` becomes the explicit
+`release-please-token` input, and you add the skip guard yourself.
+
+Either way you drop the predecessor's per-PR `concurrency` group, which is what
+left `cancelled` check-runs on PRs — see
+[the section above](#do-not-add-a-concurrency-group). Neither shape here declares
+one.

@@ -18,19 +18,29 @@ CLI in an Action step, holds the CLI as a pinned dependency, and re-releases its
 whenever Dependabot bumps that pin — so the whole chain from new logic to a
 consumer's CI runs itself.
 
-This Action is the **successor** to `@rmartz/bot-automerge`'s reusable workflow
-(`bot-automerge.yml`). Consumers migrate from the reusable-workflow caller to this
-Action; once the fleet has migrated, the reusable workflow is retired. See
+This Action **supersedes** `@rmartz/bot-automerge`'s reusable workflow
+(`bot-automerge.yml`); consumers migrate off it, and once the fleet has, that
+predecessor is retired. What was retired is the predecessor's copy, not the
+reusable-workflow _shape_: this repo offers a thin reusable-workflow wrapper around
+the Action as well, so a consumer picks whichever shape suits its repo. Both run the
+same pinned CLI and enforce the same eligibility policy — see
+[the consumer setup guide](docs/consuming.md),
 [the integration contract](docs/design/integration-contract.md) and
 [the distribution pipeline](docs/design/distribution-pipeline.md).
 
 ## Using it in a consuming repo
 
-Add one caller workflow. Because enabling auto-merge on a Dependabot PR needs
-base-context write, the caller triggers on `pull_request_target` and grants write
-scopes — a composite Action **cannot** declare its own triggers or use
-`secrets: inherit`, so the caller owns both and passes any PAT as an explicit
-input:
+Add one caller workflow, in one of two shapes. Both pin by SHA, both are bumped by
+Dependabot's `github-actions` ecosystem, and both enforce the same policy — they
+differ only in what your repo owns. **Prefer the reusable workflow** unless you need
+the Action as a step inside a job you already own. The full comparison and the
+migration path are in [the consumer setup guide](docs/consuming.md).
+
+Because enabling auto-merge on a Dependabot PR needs base-context write, either
+caller triggers on `pull_request_target` and grants write scopes.
+
+**Shape A — the reusable workflow (recommended).** Three lines, and it carries the
+skip guard for non-bot PRs so you have no `if:` expression to keep in sync:
 
 ```yaml
 # .github/workflows/bot-automerge.yml
@@ -44,6 +54,19 @@ permissions:
   pull-requests: write
   packages: read
 
+jobs:
+  bot-automerge:
+    uses: rmartz/bot-automerge-action/.github/workflows/bot-automerge-reusable.yml@<sha> # vX.Y.Z
+    secrets: inherit
+```
+
+**Shape B — the composite Action.** Use this when you want the step inside a job you
+own. A composite Action **cannot** declare its own triggers or use
+`secrets: inherit`, so this caller owns the job and passes any PAT as an explicit
+input — and owns the skip guard too:
+
+```yaml
+# .github/workflows/bot-automerge.yml (same on:/permissions: as above)
 jobs:
   bot-automerge:
     runs-on: ubuntu-latest
@@ -80,7 +103,9 @@ lockfile.
 
 ## How it relates to `@rmartz/bot-automerge`
 
-This Action is the successor to that package's reusable workflow. It carries **no
+This Action supersedes that package's reusable workflow — the predecessor's copy,
+not the reusable-workflow shape, which is still offered here as a wrapper around
+this Action. It carries **no
 check-run** (unlike [`@rmartz/merge-safety`](https://github.com/rmartz/merge-safety))
 — it is purely an eligibility enabler. See
 [the eligibility contract](https://github.com/rmartz/bot-automerge/blob/main/docs/bot-automerge-contract.md).
