@@ -18,16 +18,23 @@ picking it up.
    [`dependabot.yml`](../../.github/dependabot.yml)) opens a PR bumping the pinned
    dependency + lockfile, titled `fix(deps): bump @rmartz/bot-automerge …` (the
    npm ecosystem uses `commit-message.prefix: fix` for production deps).
-2. **Auto-merge.** This repo dogfoods bot-automerge on itself
+2. **Map the release type.** The
+   [`dependabot-release-type`](../../.github/workflows/dependabot-release-type.yml)
+   workflow rewrites that title to mirror the CLI's semver bump into the Action's
+   release type — patch stays `fix(deps):`, minor becomes `feat(deps):`, major
+   becomes `feat(deps)!:` + a `breaking change` label. See the
+   [versioning policy](versioning.md).
+3. **Auto-merge.** This repo dogfoods bot-automerge on itself
    ([`bot-automerge.yml`](../../.github/workflows/bot-automerge.yml)): the caller
    classifies the bump as a trusted Dependabot patch/minor and enables native
    auto-merge. It lands once the required checks pass — CI plus the
    [`merge-safety`](https://github.com/rmartz/merge-safety) verdict — so nothing
    merges ahead of green.
-3. **Release.** On merge to `main`,
+4. **Release.** On merge to `main`,
    [`release.yml`](../../.github/workflows/release.yml) runs semantic-release.
    [`.releaserc.json`](../../.releaserc.json) uses the conventionalcommits preset,
-   which maps `fix` → **patch**, so the CLI bump cuts a new tag + GitHub Release.
+   which maps `fix` → **patch** and `feat` → **minor** (a `!` marker → **major**), so
+   the CLI bump cuts a new tag + GitHub Release at the mirrored level.
    The release publishes nothing to a
    registry and commits nothing back (no `@semantic-release/npm`, no
    `@semantic-release/git`), so the built-in `GITHUB_TOKEN` suffices — no PAT.
@@ -39,19 +46,20 @@ picking it up.
    instead.
 
 A **major** CLI bump falls out of the auto-merge set into its own PR for a human to
-review. A CLI major is the strongest signal of consumer-facing breakage, so the
-default is to propagate it as a **major** Action release — retitle the PR with a
-breaking marker (`fix(deps)!:` / `feat!:`) before merging — and downgrade only when
-the reviewer confirms the break is invisible to Action consumers. The full rule,
-including how a breaking change is propagated even when it reaches this repo only as
-a dependency bump, is the [versioning policy](versioning.md).
+review (the `production-dependencies` Dependabot group is patch/minor only). A CLI
+major is the strongest signal of consumer-facing breakage, so the `feat(deps)!:` +
+`breaking change` mapping the `dependabot-release-type` workflow applies on open is
+the **default**, not the last word: the reviewer downgrades it (removes the `!` and
+label) only when they confirm the break is invisible to Action consumers. The full
+rule, including how a breaking change is propagated even when it reaches this repo
+only as a dependency bump, is the [versioning policy](versioning.md).
 
 ## Picking it up (consumers)
 
-4. **Consumer Dependabot.** Each consumer pins this Action by SHA
+5. **Consumer Dependabot.** Each consumer pins this Action by SHA
    (`uses: rmartz/bot-automerge-action@<sha> # vX.Y.Z`) and runs Dependabot's
    `github-actions` ecosystem, which opens a PR bumping that pin to the new release.
-5. **New logic takes effect.** The updated eligibility logic ships inside the CLI
+6. **New logic takes effect.** The updated eligibility logic ships inside the CLI
    version this release pins, so it takes effect the moment the consumer merges the
    bump — no edit to their caller.
 

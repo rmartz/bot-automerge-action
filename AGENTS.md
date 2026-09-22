@@ -72,14 +72,16 @@ release. PR titles
 are Conventional Commits and the repo squash-merges using the PR title, so a
 non-conventional title makes semantic-release skip the release.
 
-The Action versions **independently** of the wrapped CLI — its SemVer describes the
-_wrapper's_ contract, not the CLI's number. A CLI patch/minor bump is auto-merged as
-a `fix(deps)` patch (safe because the CLI honors SemVer). A **CLI major** falls out to
-a human-reviewed PR and defaults to propagating as an **Action major** — retitle it
-`fix(deps)!:` / `feat!:` before merging, and downgrade only if the break is confirmed
-invisible to Action consumers. This is how a consumer-facing break propagates even
-when it reaches this repo only as a dependency bump. Full rule:
-[docs/design/versioning.md](docs/design/versioning.md).
+The Action versions **independently** of the wrapped CLI (its SemVer describes the
+_wrapper's_ contract, not the CLI's number), but a CLI dependency bump **mirrors the
+CLI's semver bump type** into the Action's release type, applied automatically by the
+[`dependabot-release-type`](.github/workflows/dependabot-release-type.yml) workflow:
+patch → `fix(deps):`, minor → `feat(deps):`, major → `feat(deps)!:` + `breaking
+change` label. Patch/minor are auto-merged (safe because the CLI honors SemVer); a
+**CLI major** falls out to a human-reviewed PR, defaults to a breaking Action major,
+and is downgraded only if the break is confirmed invisible to Action consumers. This
+is how a consumer-facing break propagates even when it reaches this repo only as a
+dependency bump. Full rule: [docs/design/versioning.md](docs/design/versioning.md).
 
 ## Self-dogfooding
 
