@@ -5,8 +5,10 @@ for trustworthy bot PRs in a consuming repo, using the
 [`@rmartz/bot-automerge`](https://github.com/rmartz/bot-automerge) CLI. It holds the
 CLI as a pinned `package.json` dependency, wraps it in [`action.yml`](action.yml),
 and re-releases itself via semantic-release whenever Dependabot bumps that pin — the
-chain that ships new eligibility logic to the fleet. It is the **successor** to
-`@rmartz/bot-automerge`'s reusable workflow. It **dogfoods bot-automerge on itself**:
+chain that ships new eligibility logic to the fleet. It **supersedes**
+`@rmartz/bot-automerge`'s reusable workflow, and offers consumers two shapes: the
+Action itself, and a thin reusable-workflow wrapper around it — the recommended
+default ([`docs/consuming.md`](docs/consuming.md)). It **dogfoods bot-automerge on itself**:
 `.github/workflows/bot-automerge.yml` auto-merges this repo's own trusted bot PRs.
 See [README.md](README.md) and the [documentation](docs/index.md).
 
@@ -86,9 +88,22 @@ dependency bump. Full rule: [docs/design/versioning.md](docs/design/versioning.m
 ## Self-dogfooding
 
 This repo dogfoods its **own** action: `.github/workflows/bot-automerge.yml` calls
-the local action (`uses: ./`) on this repo's own bot PRs — the exact shape every
-consumer uses. (Before the first release existed it bootstrapped off
-`@rmartz/bot-automerge`'s reusable workflow; that cutover is done.)
+the local action (`uses: ./`) on this repo's own bot PRs. (Before the first release
+existed it bootstrapped off `@rmartz/bot-automerge`'s reusable workflow; that
+cutover is done.)
+
+It **deliberately dogfoods Shape B — the Action — rather than Shape A**, the
+reusable-workflow wrapper that [`docs/consuming.md`](docs/consuming.md) recommends
+to consumers. `uses: ./` exercises the Action itself, which is the substantive
+artifact both shapes ultimately run and which the wrapper only reaches through
+`uses: $/`. Know the trade this accepts: Shape A's own moving part — that `$/`
+resolves to _this_ repo at the commit the consumer pinned, when called from another
+repository — is covered by a one-off probe recorded in
+[#16](https://github.com/rmartz/bot-automerge-action/pull/16), not by any standing
+check here, and `bot-automerge-reusable.yml` is `workflow_call`-only, so nothing in
+this repo's CI executes it. Pointing the dogfood caller at Shape A would close that
+gap and still reach the Action through the wrapper; it is a CI change, so it belongs
+in its own PR rather than riding along with unrelated work.
 
 ## Worktrees & PRs
 

@@ -6,8 +6,11 @@ name: bot-automerge
 # gated on the required checks (including merge-safety), so nothing merges ahead of
 # CI.
 #
-# This calls the LOCAL action (`uses: ./`) — the exact shape every consumer uses
-# (see docs/consuming.md). A composite action cannot declare its own triggers, hold
+# This calls the LOCAL action (`uses: ./`) — Shape B in docs/consuming.md, the shape
+# a consumer uses when it owns the job. Consumers are pointed at Shape A (the
+# reusable-workflow wrapper) by default; see AGENTS.md "Self-dogfooding" for why this
+# repo deliberately dogfoods the Action directly, and what that leaves uncovered.
+# A composite action cannot declare its own triggers, hold
 # write scopes, or use `secrets: inherit`, so this caller carries the trigger,
 # grants the write permissions, and passes the release-please PAT as an explicit
 # input (`release-please-token`). This repo publishes via semantic-release, not
