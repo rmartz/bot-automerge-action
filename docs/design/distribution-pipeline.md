@@ -40,11 +40,13 @@ picking it up.
 
 A **major** CLI bump falls out of the auto-merge set into its own PR for a human to
 review. A CLI major is the strongest signal of consumer-facing breakage, so the
-default is to propagate it as a **major** Action release — retitle the PR with a
-breaking marker (`fix(deps)!:` / `feat!:`) before merging — and downgrade only when
-the reviewer confirms the break is invisible to Action consumers. The full rule,
-including how a breaking change is propagated even when it reaches this repo only as
-a dependency bump, is the [versioning policy](versioning.md).
+default is to propagate it as a **major** Action release — and the
+[`flag-breaking-dep`](../../.github/workflows/flag-breaking-dep.yml) workflow applies
+that default automatically, adding the `breaking change` label and rewriting the
+title `fix(deps):` → `fix(deps)!:` on open. The reviewer downgrades it (removes the
+`!` and label) only when they confirm the break is invisible to Action consumers.
+The full rule, including how a breaking change is propagated even when it reaches
+this repo only as a dependency bump, is the [versioning policy](versioning.md).
 
 ## Picking it up (consumers)
 

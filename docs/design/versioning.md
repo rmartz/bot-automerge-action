@@ -95,17 +95,24 @@ Two bump paths reach this repo, and the safety of each rests on a clear assumpti
 
 2. **A CLI major bump falls out of the auto-merge group into its own PR** for a human
    to review — and a CLI major is the single strongest signal of consumer-facing
-   breakage. The **default expectation is therefore to propagate it as an Action
-   major**: retitle the Dependabot PR with a breaking marker (`fix(deps)!:` or
-   `feat!:`) before merging, so semantic-release cuts a major. Downgrade to a
-   patch/minor **only** when the reviewer positively confirms the CLI's breaking
-   change is invisible to Action consumers (e.g. it touched only an internal CLI API
-   the wrapper does not exercise), and records that reasoning on the PR.
+   breakage. The **default is therefore to propagate it as an Action major**, and
+   that default is applied automatically: the
+   [`flag-breaking-dep`](../../.github/workflows/flag-breaking-dep.yml) workflow
+   detects a major bump of the wrapped CLI (via `dependabot/fetch-metadata`, gated to
+   the npm ecosystem and the exact package name), adds the `breaking change` label,
+   and rewrites the title `fix(deps):` → `fix(deps)!:` so the squash-merge cuts a
+   major. The reviewer's job is to **confirm or downgrade**: if they positively
+   confirm the CLI's breaking change is invisible to Action consumers (e.g. it
+   touched only an internal CLI API the wrapper does not exercise), they remove the
+   `!` and the label before merging and record that reasoning on the PR — otherwise
+   the flagged major stands. The workflow fires only on `opened`/`reopened`, so a
+   later Dependabot rebase does not re-apply the marker over a deliberate downgrade.
 
    > This is the reverse of a "default to patch, opt into major" stance. Defaulting a
    > reviewed CLI-major to a patch would let exactly the breakage this policy exists
    > to catch reach consumers unflagged. The safe default is to flag; the burden of
-   > proof is on _not_ flagging.
+   > proof is on _not_ flagging — which is why the flag is applied by default and
+   > removed only by a deliberate human decision.
 
 ## When the wrapper itself changes
 
