@@ -1,0 +1,103 @@
+name: bot-automerge (reusable)
+
+# A thin JOB-LEVEL wrapper around this repo's composite Action, offered alongside
+# it — not instead of it. Both shapes enforce the same eligibility policy from the
+# same pinned CLI; they differ only in what the consumer owns.
+#
+#   jobs:
+#     bot-automerge:
+#       uses: rmartz/bot-automerge-action/.github/workflows/bot-automerge-reusable.yml@<sha> # vX.Y.Z
+#       secrets: inherit
+#
+# Why this exists: a composite Action is a STEP, so it cannot skip its caller's
+# job. Getting a `skipped` conclusion on a PR that can never qualify therefore
+# requires a job-level `if:`, which in the Action shape has to be copy-pasted into
+# every consuming repo — eleven of them, each a private copy of the CLI's
+# classifier that nothing bumps when the classifier changes. Here the guard lives
+# once, next to the logic it mirrors, and ships with the pin the consumer already
+# updates.
+#
+# `uses: $/` resolves to THIS repository at the exact commit the consumer pinned,
+# with no checkout, so the wrapper and the Action can never drift apart and there
+# is no second pin to maintain. It is also the only form that works here: a `./`
+# ref inside a reusable workflow resolves against the CALLER's workspace, where
+# this action does not exist. See
+# https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/
+#
+# A called workflow runs with the INTERSECTION of the scopes it declares and the
+# scopes its caller grants, so the caller must grant all three below or the run
+# fails at startup validation. Unlike the Action shape, `secrets: inherit` works
+# here, so a release-please PAT no longer has to be threaded by hand — the
+# omission that silently disables release CD.
+
+on:
+  workflow_call:
+    inputs:
+      pr:
+        description: >-
+          PR number to classify. Defaults to the caller's own pull_request event,
+          so a pull_request_target caller passes nothing. Supply it only when
+          calling from an event that carries no PR (e.g. workflow_dispatch).
+        type: string
+        required: false
+        default: ''
+      update-type:
+        description: >-
+          Optional override for the Dependabot semver update-type. Empty (the
+          default) derives it via dependabot/fetch-metadata. Ignored on
+          non-Dependabot PRs.
+        type: string
+        required: false
+        default: ''
+      node-version:
+        description: Node.js version to run the CLI under.
+        type: string
+        required: false
+        default: '22'
+
+permissions:
+  contents: write # enable GitHub-native auto-merge on the PR
+  pull-requests: write # read PR metadata + turn on auto-merge
+  packages: read # install the @rmartz/bot-automerge CLI from GitHub Packages
+
+# No `concurrency:` group, deliberately. GitHub permits only one PENDING run per
+# group and cancels any it supersedes, so a group turns a burst of
+# pull_request_target events (opening a PR and labelling it fires one each) into
+# `cancelled` check-runs — a conclusion merge-gating tools read as failure and
+# which is indistinguishable from a timeout. That, not the reusable-workflow shape
+# itself, is what made the predecessor noisy. See docs/consuming.md.
+
+jobs:
+  enable:
+    name: Enable auto-merge for an eligible bot PR
+    # Skip outright on PRs the CLI could never trust, so a human PR resolves as a
+    # free `skipped` instead of installing the CLI just to no-op. The conditions
+    # mirror the CLI's own detectBotPrType exactly — Dependabot by author,
+    # release-please by branch prefix OR pending label — so nothing eligible is
+    # skipped.
+    #
+    # Deliberately NOT an author test. release-please authors its PR as a [bot]
+    # account only under the default GITHUB_TOKEN; run under a PAT it is authored
+    # by that real user, so `endsWith(login, '[bot]')` would skip exactly the
+    # release PRs a consumer wanted merged. In rmartz/ai-tools those PRs are
+    # authored by `rmartz`.
+    #
+    # An explicit `pr` input bypasses the guard: the caller has named a PR
+    # deliberately, and the CLI still classifies it and no-ops if untrusted.
+    if: >-
+      inputs.pr != ''
+      || github.event.pull_request.user.login == 'dependabot[bot]'
+      || startsWith(github.event.pull_request.head.ref, 'release-please--')
+      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # No checkout: `$/` is resolved by the runner, and the Action installs its
+    # pinned CLI into its own directory and reaches the PR over the API — it never
+    # reads the consumer's tree.
+    steps:
+      - uses: $/
+        with:
+          pr: ${{ inputs.pr != '' && inputs.pr || github.event.pull_request.number }}
+          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+          update-type: ${{ inputs.update-type }}
+          node-version: ${{ inputs.node-version }}
