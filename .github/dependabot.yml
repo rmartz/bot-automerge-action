@@ -17,6 +17,8 @@ updates:
     schedule:
       interval: weekly
     commit-message:
+      # Action bumps only touch this repo's own CI workflows, not the shipped
+      # composite Action, so they must not cut a release: `chore` → no release.
       prefix: chore
       include: scope
     groups:
@@ -35,7 +37,12 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: chore
+      # Production deps ship inside the released Action, so their bump must cut a
+      # release: prefix `fix` (→ patch via semantic-release's conventionalcommits
+      # preset). Dev deps never reach the shipped artifact, so `prefix-development:
+      # chore` keeps them release-less. (Codified in rmartz/ai#82.)
+      prefix: fix
+      prefix-development: chore
       include: scope
     groups:
       # Prettier isolated so a reformatting bump can't hide in a catch-all.
@@ -50,9 +57,9 @@ updates:
           - minor
           - patch
       # @rmartz/bot-automerge is the only production dep; its patch/minor bump is
-      # what bot-automerge auto-merges and .releaserc maps chore(deps) → patch, so
-      # the bump cuts a new action release. A major bump falls out to its own PR
-      # (not auto-merged) for a human to review.
+      # what bot-automerge auto-merges and, titled `fix(deps)`, maps to a patch
+      # release, so the bump cuts a new action release. A major bump falls out to
+      # its own PR (not auto-merged) for a human to review.
       production-dependencies:
         dependency-type: production
         update-types:

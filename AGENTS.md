@@ -65,8 +65,10 @@ This repo's real test is running the local action against a live bot PR; the
 Automated via **semantic-release** ([`.releaserc.json`](.releaserc.json)): a merge
 to `main` cuts the git tag + GitHub Release. It publishes nothing and commits
 nothing back (no `@semantic-release/npm`, no `@semantic-release/git`), so the
-built-in `GITHUB_TOKEN` suffices — no PAT. `chore(deps)` maps to a patch release so
-a Dependabot bump of `@rmartz/bot-automerge` ships a new Action version. PR titles
+built-in `GITHUB_TOKEN` suffices — no PAT. Production-dependency bumps are titled
+`fix(deps)` (→ patch) so a Dependabot bump of `@rmartz/bot-automerge` ships a new
+Action version; dev-dependency and github-actions bumps stay `chore` and cut no
+release. PR titles
 are Conventional Commits and the repo squash-merges using the PR title, so a
 non-conventional title makes semantic-release skip the release.
 
