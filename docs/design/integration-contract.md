@@ -40,6 +40,18 @@ crux of the design:
 The `@rmartz` scope is routed to GitHub Packages by the repo's
 [`.npmrc`](../../.npmrc); every other (public, npmjs) dependency resolves normally.
 
+## Fork PRs are rejected first
+
+Before anything else, the action's `Reject fork PRs` step reads the PR's
+`isCrossRepository` and `headRepository` from `gh pr view`. Every later step runs
+only if the PR's head branch lives in the base repository. A fork picks its own
+branch name, so it could otherwise pose as a release-please PR while the caller's
+`pull_request_target` job holds a write token (GHSA-39fm-72q5-676g). A missing
+field or a deleted head repository counts as a fork. If the PR can't be read at
+all, the step fails. The step doesn't depend on the pinned CLI version, which
+rejects fork PRs too from `@rmartz/bot-automerge` 0.2.1 onward. The reusable
+workflow and this repo's own caller also skip fork PR events at the job level.
+
 ## The two enable paths
 
 The action reproduces the reusable workflow's branch on PR author, because the two

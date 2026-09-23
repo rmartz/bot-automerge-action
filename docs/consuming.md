@@ -81,9 +81,10 @@ jobs:
   bot-automerge:
     # Skip PRs the CLI could never trust — see "Skip PRs that can never qualify".
     if: >-
-      github.event.pull_request.user.login == 'dependabot[bot]'
+      github.event.pull_request.head.repo.full_name == github.repository
+      && (github.event.pull_request.user.login == 'dependabot[bot]'
       || startsWith(github.event.pull_request.head.ref, 'release-please--')
-      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending')
+      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -118,16 +119,20 @@ Why each piece is there:
 
 > Shape A has this built in. This section applies only if you own the job.
 
-The `if:` guard on the job is an optimisation, not a gate — the CLI already no-ops
-on anything it does not trust. Without it, every human PR pays for a checkout, a
+The bot conditions in the `if:` guard are an optimisation, not a gate — the CLI
+already no-ops on anything it does not trust. The first condition, which skips fork
+PRs, is a safety check (GHSA-39fm-72q5-676g): a fork picks its own branch name, so
+it could otherwise pose as a release-please PR. The Action also rejects fork PRs
+itself, but keep the condition anyway so that pins older than the fix stay safe. Without it, every human PR pays for a checkout, a
 Node setup and an `npm ci` just to conclude "not a bot PR". With it, those PRs
 resolve as `skipped` for free.
 
-The three conditions mirror the CLI's own classifier exactly, so nothing eligible
-is skipped:
+The three bot conditions mirror the CLI's own classifier exactly, so nothing
+eligible is skipped:
 
 | Condition                                         | Why                                                   |
 | ------------------------------------------------- | ----------------------------------------------------- |
+| `head.repo.full_name == github.repository`        | Fork PRs are never eligible (required, not optional). |
 | `user.login == 'dependabot[bot]'`                 | Dependabot is detected by author.                     |
 | `startsWith(head.ref, 'release-please--')`        | release-please's default branch prefix.               |
 | `contains(labels.*.name, 'autorelease: pending')` | release-please's label, for a customised branch name. |

@@ -82,13 +82,20 @@ jobs:
     # release PRs a consumer wanted merged. In rmartz/ai-tools those PRs are
     # authored by `rmartz`.
     #
-    # An explicit `pr` input bypasses the guard: the caller has named a PR
-    # deliberately, and the CLI still classifies it and no-ops if untrusted.
+    # A fork PR is always skipped (GHSA-39fm-72q5-676g): a fork picks its own
+    # branch name, so it can pose as release-please. The Action rejects fork PRs
+    # too; this skips them before a runner starts.
+    #
+    # An explicit `pr` input bypasses the bot conditions: the caller has named a PR
+    # deliberately, and the Action still rejects a fork and the CLI still no-ops if
+    # untrusted.
     if: >-
-      inputs.pr != ''
+      (github.event.pull_request == null
+      || github.event.pull_request.head.repo.full_name == github.repository)
+      && (inputs.pr != ''
       || github.event.pull_request.user.login == 'dependabot[bot]'
       || startsWith(github.event.pull_request.head.ref, 'release-please--')
-      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending')
+      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # No checkout: `$/` is resolved by the runner, and the Action installs its

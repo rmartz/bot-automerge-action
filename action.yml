@@ -60,7 +60,32 @@ inputs:
 runs:
   using: composite
   steps:
+    # Never act on a fork PR (GHSA-39fm-72q5-676g). A fork picks its own branch
+    # name, so it can pose as a release-please PR, and the caller's
+    # pull_request_target job holds a write token. Genuine Dependabot and
+    # release-please branches always live in the base repository. This runs before
+    # anything else, reads the PR over the API (so it covers an explicit `pr` input
+    # too), and gates every later step, whatever CLI version is pinned. A missing
+    # field or a deleted head repository counts as a fork; an unreadable PR fails.
+    - name: Reject fork PRs
+      id: origin
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ inputs.pr }}
+        REPO: ${{ github.repository }}
+      run: |
+        same_repo=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" \
+          --json isCrossRepository,headRepository \
+          --jq '.isCrossRepository == false and .headRepository != null')
+        if [ "${same_repo}" = "true" ]; then
+          echo "trusted=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "#${PR_NUMBER}: PR is from a fork (cross-repository) — never eligible; skipping"
+          echo "trusted=false" >> "${GITHUB_OUTPUT}"
+        fi
     - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      if: steps.origin.outputs.trusted == 'true'
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: https://npm.pkg.github.com
@@ -68,6 +93,7 @@ runs:
     # Install the pinned CLI into this action's own directory — $GITHUB_ACTION_PATH
     # holds this action's package.json + lockfile — not the consumer workspace.
     - name: Install pinned @rmartz/bot-automerge
+      if: steps.origin.outputs.trusted == 'true'
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
@@ -80,12 +106,12 @@ runs:
     # relabeled the PR.
     - name: Fetch Dependabot metadata
       id: metadata
-      if: github.event.pull_request.user.login == 'dependabot[bot]' && inputs.update-type == ''
+      if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login == 'dependabot[bot]' && inputs.update-type == ''
       uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
       with:
         github-token: ${{ inputs.token }}
     - name: Enable auto-merge (Dependabot)
-      if: github.event.pull_request.user.login == 'dependabot[bot]'
+      if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login == 'dependabot[bot]'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -100,7 +126,7 @@ runs:
     # is passed on this path. Uses the real-actor PAT when provided so a merged
     # release PR re-triggers the consumer's release CD; falls back to `token`.
     - name: Enable auto-merge (release-please / other bot)
-      if: github.event.pull_request.user.login != 'dependabot[bot]'
+      if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login != 'dependabot[bot]'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.release-please-token != '' && inputs.release-please-token || inputs.token }}
