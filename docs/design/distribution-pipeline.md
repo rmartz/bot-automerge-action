@@ -17,7 +17,10 @@ picking it up.
    Dependabot's npm ecosystem (with the `github-packages` registry auth wired in
    [`dependabot.yml`](../../.github/dependabot.yml)) opens a PR bumping the pinned
    dependency + lockfile, titled `fix(deps): bump @rmartz/bot-automerge …` (the
-   npm ecosystem uses `commit-message.prefix: fix` for production deps).
+   npm ecosystem uses `commit-message.prefix: fix` for production deps). The npm
+   ecosystem runs **daily** (the `github-actions` one stays weekly — its bumps cut
+   no release), so this hop adds at most a day before the consumers' own
+   Dependabot pick-up in step 5.
 2. **Map the release type.** The
    [`dependabot-release-type`](../../.github/workflows/dependabot-release-type.yml)
    workflow rewrites that title to mirror the CLI's semver bump into the Action's
