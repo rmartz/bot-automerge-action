@@ -32,9 +32,10 @@ qualify) are the CLI's; see the
 
 ## What it does at run time
 
-1. Sets up Node.js and points npm at GitHub Packages for the `@rmartz` scope.
+1. Sets up Node.js.
 2. Runs `npm ci` **in the action's own directory** to install the exact
-   `@rmartz/bot-automerge` version pinned in this repo's `package-lock.json`.
+   `@rmartz/bot-automerge` version pinned in this repo's `package-lock.json`, from
+   npmjs with no auth.
 3. On a Dependabot PR, runs `dependabot/fetch-metadata` (unless an `update-type`
    override is supplied) to obtain the semver update-type.
 4. Invokes `ai-bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`,
@@ -51,7 +52,7 @@ makes the PR _eligible_ to merge itself once those pass.
 | Input                  | Default               | Meaning                                                                                     |
 | ---------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
 | `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                            |
-| `token`                | `${{ github.token }}` | Installs the CLI from GitHub Packages; also the GH token for the Dependabot enable path.    |
+| `token`                | `${{ github.token }}` | GH token for reading the PR and the Dependabot enable path.                                 |
 | `release-please-token` | `''` (→ `token`)      | Real-actor PAT for the release-please / other-bot path so the merge re-triggers release CD. |
 | `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.     |
 | `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                         |

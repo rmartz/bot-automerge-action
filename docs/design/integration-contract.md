@@ -14,9 +14,10 @@ evolve independently.
 
 ## The package and CLI
 
-- **Package:** `@rmartz/bot-automerge`, published to GitHub Packages
-  (`https://npm.pkg.github.com`, scope `@rmartz`, public). Readable with the built-in
-  `GITHUB_TOKEN` plus `packages: read` — no PAT.
+- **Package:** `@rmartz/bot-automerge`, published publicly to npmjs
+  (`https://registry.npmjs.org/`, with provenance). Installs with no auth. Versions
+  up to 0.2.1 were also published to GitHub Packages, which older Action releases
+  installed from.
 - **CLI (bin):** `ai-bot-automerge`. The action invokes it as
   `ai-bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`. The CLI
   classifies the PR and, when it is eligible, runs `gh pr merge --auto --squash`. Its
@@ -37,8 +38,9 @@ crux of the design:
 - The pinned version is therefore the single source of truth for "which eligibility
   logic this Action ref enforces," which is why the Action has no `version` input.
 
-The `@rmartz` scope is routed to GitHub Packages by the repo's
-[`.npmrc`](../../.npmrc); every other (public, npmjs) dependency resolves normally.
+The repo's [`.npmrc`](../../.npmrc) pins the `@rmartz` scope to npmjs. That keeps
+a runner- or user-level `.npmrc` that maps `@rmartz` to GitHub Packages (other
+`@rmartz` packages still live there) from redirecting the install.
 
 ## Fork PRs are rejected first
 

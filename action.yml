@@ -30,9 +30,10 @@ inputs:
     required: true
   token:
     description: >-
-      Token used to install @rmartz/bot-automerge from GitHub Packages and, on the
-      Dependabot path, to enable auto-merge. Defaults to the workflow GITHUB_TOKEN,
-      which needs contents:write + pull-requests:write + packages:read on the job.
+      Token used to read the PR and, on the Dependabot path, to enable
+      auto-merge. Defaults to the workflow GITHUB_TOKEN, which needs
+      contents:write + pull-requests:write on the job. The CLI itself installs
+      from npmjs with no auth, so `packages: read` is no longer needed.
     required: false
     default: ${{ github.token }}
   release-please-token:
@@ -88,16 +89,14 @@ runs:
       if: steps.origin.outputs.trusted == 'true'
       with:
         node-version: ${{ inputs.node-version }}
-        registry-url: https://npm.pkg.github.com
-        scope: '@rmartz'
     # Install the pinned CLI into this action's own directory — $GITHUB_ACTION_PATH
-    # holds this action's package.json + lockfile — not the consumer workspace.
+    # holds this action's package.json, lockfile, and .npmrc (which pins the
+    # @rmartz scope to npmjs) — not the consumer workspace. The package is public
+    # on npmjs, so the install needs no token.
     - name: Install pinned @rmartz/bot-automerge
       if: steps.origin.outputs.trusted == 'true'
       shell: bash
       working-directory: ${{ github.action_path }}
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.token }}
       run: npm ci
     # A Dependabot PR carries a semver update-type; fetch it (unless overridden via
     # the update-type input) and pass it so the CLI enables auto-merge only on

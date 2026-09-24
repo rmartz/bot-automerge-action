@@ -39,7 +39,7 @@ on:
 permissions:
   contents: write # enable GitHub-native auto-merge on the PR
   pull-requests: write # read PR metadata + turn on auto-merge
-  packages: read # install the public @rmartz/bot-automerge package
+  packages: read # still declared by the reusable workflow (see below)
 
 jobs:
   bot-automerge:
@@ -51,7 +51,8 @@ That is the whole caller. Notes:
 
 - **Grant all three scopes.** A called workflow runs with the _intersection_ of the
   scopes it declares and the scopes you grant, so omitting one fails the run at
-  startup validation.
+  startup validation. The CLI now installs from npmjs with no auth, so
+  `packages: read` is only there because the reusable workflow still declares it.
 - **`secrets: inherit`** threads `RELEASE_PLEASE_PAT` through automatically. Nothing
   to pass by hand, and nothing to forget — see
   [the PAT note](#why-release-please-token-matters) below.
@@ -75,7 +76,6 @@ on:
 permissions:
   contents: write # enable GitHub-native auto-merge on the PR
   pull-requests: write # read PR metadata + turn on auto-merge
-  packages: read # install the public @rmartz/bot-automerge package
 
 jobs:
   bot-automerge:
@@ -101,8 +101,9 @@ Why each piece is there:
   read-only token; enabling auto-merge needs base-context write, which
   `pull_request_target` provides. This is expected, not a review flag.
 - **Write scopes on the job.** `contents: write` + `pull-requests: write` are what
-  `gh pr merge --auto` needs; `packages: read` lets the built-in `GITHUB_TOKEN`
-  install the public `@rmartz/bot-automerge` package — no PAT for the install.
+  `gh pr merge --auto` needs. The `@rmartz/bot-automerge` CLI installs from npmjs
+  with no auth, so no `packages: read` and no PAT for the install. (Action versions
+  from before the move installed from GitHub Packages and needed `packages: read`.)
 - **Check out first.** `uses: ./`-style local actions and this published Action
   both run as a step in your job; a plain `actions/checkout` before the step is
   enough (the Action reads no repo history).
