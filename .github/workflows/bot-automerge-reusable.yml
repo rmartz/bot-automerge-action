@@ -72,8 +72,9 @@ jobs:
     # Skip outright on PRs the CLI could never trust, so a human PR resolves as a
     # free `skipped` instead of installing the CLI just to no-op. The conditions
     # mirror the CLI's own detectBotPrType exactly — Dependabot by author,
-    # release-please by branch prefix OR pending label — so nothing eligible is
-    # skipped.
+    # release-please by branch prefix only — so nothing eligible is skipped. The
+    # `autorelease: pending` label is NOT a signal (GHSA-4f7f-7fcp-gcm6): anyone with
+    # triage access can apply it to any PR.
     #
     # Deliberately NOT an author test. release-please authors its PR as a [bot]
     # account only under the default GITHUB_TOKEN; run under a PAT it is authored
@@ -93,8 +94,7 @@ jobs:
       || github.event.pull_request.head.repo.full_name == github.repository)
       && (inputs.pr != ''
       || github.event.pull_request.user.login == 'dependabot[bot]'
-      || startsWith(github.event.pull_request.head.ref, 'release-please--')
-      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending'))
+      || startsWith(github.event.pull_request.head.ref, 'release-please--'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # No checkout: `$/` is resolved by the runner, and the Action installs its
