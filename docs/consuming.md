@@ -160,6 +160,20 @@ is a no-op when auto-merge is already on) and, with the skip guard above, usuall
 `skipped`. If you want to cut them further, trim the trigger list rather than adding
 a group — `edited` in particular fires every time Dependabot rewrites a PR body.
 
+## The `auto-merge enabled` label
+
+When the Action arms auto-merge on an eligible PR, it also applies an
+**`auto-merge enabled`** label. Triage bots, dashboards, and PR coordinators can read
+that label to know bot-automerge already owns the PR and skip it. Add the label to your
+repo's label roster (for example with `ai-ensure-labels`). Applying it is best-effort:
+if the label is missing, the run logs a warning and still succeeds, because auto-merge
+is already armed. It needs no permission beyond the `pull-requests: write` the job
+already has.
+
+On the release-please path, the label is applied with `release-please-token` (a real
+actor), so it fires one more `labeled` event and one extra run. That run is harmless:
+enabling auto-merge again is a no-op.
+
 ## Prerequisite — require `merge-safety` + your CI first
 
 > `gh pr merge --auto` merges a PR **immediately** when the repo has no required
