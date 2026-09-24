@@ -34,8 +34,12 @@ updates:
     directory: /
     registries:
       - github-packages
+    # Daily, not weekly: this is the hop that turns a new @rmartz/bot-automerge
+    # release into a new Action release. Stacked on the consumers' own weekly
+    # github-actions pin bump, a weekly interval here could delay a CLI fix ~2
+    # weeks before it reaches the fleet; daily cuts this repo's share to ≤1 day.
     schedule:
-      interval: weekly
+      interval: daily
     commit-message:
       # Production deps ship inside the released Action, so their bump must cut a
       # release: prefix `fix` (→ patch via semantic-release's conventionalcommits
