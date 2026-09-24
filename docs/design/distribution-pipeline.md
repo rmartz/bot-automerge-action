@@ -13,9 +13,9 @@ picking it up.
 
 ## Producing a release (this repo)
 
-1. **CLI bump.** `@rmartz/bot-automerge` publishes a new version to GitHub Packages.
-   Dependabot's npm ecosystem (with the `github-packages` registry auth wired in
-   [`dependabot.yml`](../../.github/dependabot.yml)) opens a PR bumping the pinned
+1. **CLI bump.** `@rmartz/bot-automerge` publishes a new version to npmjs.
+   Dependabot's npm ecosystem ([`dependabot.yml`](../../.github/dependabot.yml), no
+   registry auth needed) opens a PR bumping the pinned
    dependency + lockfile, titled `fix(deps): bump @rmartz/bot-automerge …` (the
    npm ecosystem uses `commit-message.prefix: fix` for production deps). The npm
    ecosystem runs **daily** (the `github-actions` one stays weekly — its bumps cut

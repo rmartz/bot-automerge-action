@@ -85,15 +85,17 @@ jobs:
 > repo's required checks are what it waits on. See the
 > [consumer setup guide](docs/consuming.md) for the full prerequisite.
 
-The public `@rmartz/bot-automerge` package on GitHub Packages is readable with the
-built-in `GITHUB_TOKEN` (grant `packages: read`) — no PAT for the install.
+The `@rmartz/bot-automerge` CLI is public on npmjs and installs with no token. The
+Shape A caller above still grants `packages: read` only because the reusable
+workflow still declares it, and a caller must grant every scope a called workflow
+declares. A Shape B caller doesn't need it.
 
 ### Inputs
 
 | Input                  | Default               | Meaning                                                                               |
 | ---------------------- | --------------------- | ------------------------------------------------------------------------------------- |
 | `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                      |
-| `token`                | `${{ github.token }}` | Installs the CLI from GitHub Packages; also the Dependabot-path enable GH token.      |
+| `token`                | `${{ github.token }}` | GH token for reading the PR and the Dependabot-path enable.                           |
 | `release-please-token` | `''` (→ `token`)      | Real-actor PAT for the release-please path so the merge re-triggers release CD.       |
 | `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via fetch-metadata. |
 | `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                   |
