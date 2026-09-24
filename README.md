@@ -52,7 +52,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  packages: read
 
 jobs:
   bot-automerge:
@@ -85,10 +84,11 @@ jobs:
 > repo's required checks are what it waits on. See the
 > [consumer setup guide](docs/consuming.md) for the full prerequisite.
 
-The `@rmartz/bot-automerge` CLI is public on npmjs and installs with no token. The
-Shape A caller above still grants `packages: read` only because the reusable
-workflow still declares it, and a caller must grant every scope a called workflow
-declares. A Shape B caller doesn't need it.
+The `@rmartz/bot-automerge` CLI is public on npmjs and installs with no token, so
+neither shape needs `packages: read`. One exception: a Shape A caller pinned to a
+reusable-workflow release from before the move must keep granting it, because
+those releases still declare it and a caller must grant every scope a called
+workflow declares. Drop it once Dependabot moves your pin past that.
 
 ### Inputs
 

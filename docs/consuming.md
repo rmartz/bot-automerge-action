@@ -39,7 +39,6 @@ on:
 permissions:
   contents: write # enable GitHub-native auto-merge on the PR
   pull-requests: write # read PR metadata + turn on auto-merge
-  packages: read # still declared by the reusable workflow (see below)
 
 jobs:
   bot-automerge:
@@ -49,10 +48,11 @@ jobs:
 
 That is the whole caller. Notes:
 
-- **Grant all three scopes.** A called workflow runs with the _intersection_ of the
+- **Grant both scopes.** A called workflow runs with the _intersection_ of the
   scopes it declares and the scopes you grant, so omitting one fails the run at
-  startup validation. The CLI now installs from npmjs with no auth, so
-  `packages: read` is only there because the reusable workflow still declares it.
+  startup validation. The CLI installs from npmjs with no auth, so there's no
+  `packages: read`. A pin to a reusable-workflow release from before the move
+  still declares it, so keep granting it until Dependabot moves your pin past that.
 - **`secrets: inherit`** threads `RELEASE_PLEASE_PAT` through automatically. Nothing
   to pass by hand, and nothing to forget — see
   [the PAT note](#why-release-please-token-matters) below.
