@@ -25,7 +25,6 @@ on:
 permissions:
   contents: write # enable GitHub-native auto-merge on the PR
   pull-requests: write # read PR metadata + turn on auto-merge
-  packages: read # install the @rmartz/bot-automerge CLI from GitHub Packages
 
 jobs:
   bot-automerge:
