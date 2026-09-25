@@ -33,15 +33,14 @@ jobs:
     # A fork PR is always skipped (GHSA-39fm-72q5-676g): a fork picks its own
     # branch name, so it could pose as release-please.
     # The three bot conditions mirror the CLI's own detectBotPrType exactly —
-    # Dependabot by author, release-please by branch prefix OR pending label — so
-    # nothing eligible is skipped. Note release-please's author is NOT reliably a
+    # Dependabot by author, release-please by branch prefix only (the pending label
+    # is not a signal; see GHSA-4f7f-7fcp-gcm6) — so nothing eligible is skipped. Note release-please's author is NOT reliably a
     # [bot] account: run under a PAT, its release PR is authored by that real user,
-    # which is why this keys off the branch and label rather than the author alone.
+    # which is why this keys off the branch rather than the author alone.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository
       && (github.event.pull_request.user.login == 'dependabot[bot]'
-      || startsWith(github.event.pull_request.head.ref, 'release-please--')
-      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending'))
+      || startsWith(github.event.pull_request.head.ref, 'release-please--'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -83,8 +83,7 @@ jobs:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository
       && (github.event.pull_request.user.login == 'dependabot[bot]'
-      || startsWith(github.event.pull_request.head.ref, 'release-please--')
-      || contains(github.event.pull_request.labels.*.name, 'autorelease: pending'))
+      || startsWith(github.event.pull_request.head.ref, 'release-please--'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -128,15 +127,20 @@ itself, but keep the condition anyway so that pins older than the fix stay safe.
 Node setup and an `npm ci` just to conclude "not a bot PR". With it, those PRs
 resolve as `skipped` for free.
 
-The three bot conditions mirror the CLI's own classifier exactly, so nothing
+The bot conditions mirror the CLI's own classifier exactly, so nothing
 eligible is skipped:
 
-| Condition                                         | Why                                                   |
-| ------------------------------------------------- | ----------------------------------------------------- |
-| `head.repo.full_name == github.repository`        | Fork PRs are never eligible (required, not optional). |
-| `user.login == 'dependabot[bot]'`                 | Dependabot is detected by author.                     |
-| `startsWith(head.ref, 'release-please--')`        | release-please's default branch prefix.               |
-| `contains(labels.*.name, 'autorelease: pending')` | release-please's label, for a customised branch name. |
+| Condition                                  | Why                                                   |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `head.repo.full_name == github.repository` | Fork PRs are never eligible (required, not optional). |
+| `user.login == 'dependabot[bot]'`          | Dependabot is detected by author.                     |
+| `startsWith(head.ref, 'release-please--')` | release-please's default branch prefix.               |
+
+The `autorelease: pending` label is **not** a condition. From `@rmartz/bot-automerge`
+1.0.1 (GHSA-4f7f-7fcp-gcm6), release-please PRs are identified by branch prefix only.
+Anyone with triage access can apply a label, so a label-only match would let them get
+auto-merge armed on any same-repo PR. A release-please setup that uses a custom branch
+name no longer qualifies.
 
 > Do **not** simplify this to an author test such as
 > `endsWith(github.event.pull_request.user.login, '[bot]')`. A release-please PR is

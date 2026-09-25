@@ -65,7 +65,7 @@ paths differ in both metadata and token:
    `--update-type` so only patch/minor bumps qualify. Enables auto-merge with the
    `token` input's GH token.
 2. **release-please / other bot** (any other author) — passes no update-type; the CLI
-   detects release-please itself (branch/label markers) and no-ops on anything it
+   detects release-please itself (by its `release-please--` branch prefix) and no-ops on anything it
    does not trust. Enables auto-merge with `release-please-token` when set (falling
    back to `token`), so a real-actor PAT can re-trigger the consumer's release CD.
 
