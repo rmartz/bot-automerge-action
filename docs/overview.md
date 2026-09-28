@@ -49,27 +49,33 @@ makes the PR _eligible_ to merge itself once those pass.
 
 ## Inputs
 
-| Input                  | Default               | Meaning                                                                                     |
-| ---------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
-| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                            |
-| `token`                | `${{ github.token }}` | GH token for reading the PR and the Dependabot enable path.                                 |
-| `release-please-token` | `''` (→ `token`)      | Real-actor PAT for the release-please / other-bot path so the merge re-triggers release CD. |
-| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.     |
-| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                         |
+| Input                  | Default               | Meaning                                                                                                                 |
+| ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                                                        |
+| `token`                | `${{ github.token }}` | Token for every step; pass a real-actor PAT so the merge fires your push workflows. Empty falls back to `github.token`. |
+| `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please / other-bot path, with a warning. |
+| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.                                 |
+| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                     |
 
 There is deliberately **no `version` input** (unlike the reusable workflow): the
 installed CLI version is the one pinned in this Action's lockfile, bumped by
 Dependabot and shipped as a new Action release. See
 [the distribution pipeline](design/distribution-pipeline.md).
 
-## Why an explicit `release-please-token`
+## Why the PAT is an explicit `token`
 
-The reusable workflow used `secrets: inherit` to reach `RELEASE_PLEASE_PAT`. A
-composite Action **cannot** use `secrets: inherit` — that is a reusable-workflow-only
-feature and secrets do not flow implicitly into a composite Action. So the PAT is
-passed as an explicit input. When set, the release-please / other-bot path enables
-auto-merge as that real actor, which lets the merged release PR re-trigger the
-consumer's release CD (a `GITHUB_TOKEN`-attributed merge does not fire further
-workflows — [bot-automerge#8](https://github.com/rmartz/bot-automerge/issues/8)). It
-falls back to `token` when unset, in which case auto-merge still works but a release
-PR's downstream CD will not re-fire.
+A composite Action **cannot** use `secrets: inherit` — that is a
+reusable-workflow-only feature and secrets do not flow implicitly into a composite
+Action. So a real-actor PAT is passed as the explicit `token` input, which every
+step uses. GitHub attributes an auto-merge to whoever enabled it and runs no
+workflows for events caused by `GITHUB_TOKEN`, so a merge enabled with the default
+token fires none of the consumer's push workflows — no CI on `main`, no release CD
+([bot-automerge#8](https://github.com/rmartz/bot-automerge/issues/8)). That applies
+to Dependabot merges and release-please merges alike, which is why one input now
+governs both paths. An empty `token` (an unset secret) falls back to
+`github.token`, in which case auto-merge still works but those push workflows do
+not fire.
+
+`release-please-token`, which once carried the PAT for the release-please path
+only, is deprecated: when set it still overrides `token` on that path and logs a
+warning, and it will be removed in the next major.

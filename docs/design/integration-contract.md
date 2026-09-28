@@ -63,23 +63,35 @@ paths differ in both metadata and token:
    runs `dependabot/fetch-metadata` (a nested `uses:` step) to obtain the semver
    update-type, unless the `update-type` input overrides it, and passes it as
    `--update-type` so only patch/minor bumps qualify. Enables auto-merge with the
-   `token` input's GH token.
+   `token` input.
 2. **release-please / other bot** (any other author) — passes no update-type; the CLI
    detects release-please itself (by its `release-please--` branch prefix) and no-ops on anything it
-   does not trust. Enables auto-merge with `release-please-token` when set (falling
-   back to `token`), so a real-actor PAT can re-trigger the consumer's release CD.
+   does not trust. Enables auto-merge with the `token` input — or with the
+   deprecated `release-please-token` when a caller still sets it, which also logs a
+   deprecation warning.
+
+Every step resolves its token as `inputs.token || github.token`, because an unset
+secret passed as `token: ${{ secrets.X }}` arrives as an empty string, which
+overrides the input default instead of falling back to it.
 
 Both guards key off the PR **author**, which is robust across
 opened/synchronize/labeled events — unlike `github.actor`, which can be a human who
 relabeled the PR.
 
-## Why `release-please-token` is an explicit input
+## Why the PAT is an explicit `token` input
 
 A composite Action cannot use `secrets: inherit` (a reusable-workflow-only feature),
-and secrets do not flow implicitly into a composite Action. The reusable workflow
-reached `RELEASE_PLEASE_PAT` via `secrets: inherit`; here the consumer passes it as
-the `release-please-token` input. This is the one behavioral difference a migrating
-consumer must make — see [consuming.md](../consuming.md).
+and secrets do not flow implicitly into a composite Action. The predecessor reusable
+workflow reached `RELEASE_PLEASE_PAT` via `secrets: inherit`; here a Shape B
+consumer passes its PAT as the `token` input. This is the one behavioral difference
+a migrating consumer must make — see [consuming.md](../consuming.md). This repo's
+Shape A wrapper still uses `secrets: inherit` and threads `BOT_AUTOMERGE_TOKEN`
+(falling back to the legacy `RELEASE_PLEASE_PAT`) into `token` itself.
+
+One input governs both paths because a `GITHUB_TOKEN`-enabled merge fires none of
+the consumer's push workflows on either path. The old split — `token` for
+Dependabot, `release-please-token` for release PRs — implied the PAT mattered only
+for release CD, and let the Dependabot gap go unnoticed.
 
 ## The action-path vs API-operation split
 

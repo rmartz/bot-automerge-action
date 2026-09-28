@@ -81,7 +81,7 @@ The predecessor shipped as a reusable workflow (`bot-automerge.yml`) that consum
 called at the job level with `secrets: inherit`. A composite Action lets the consumer
 own the job — its triggers, checkout, and permissions — and drop the step into an
 existing `pull_request_target` job. The one cost of the switch is that a composite
-Action cannot use `secrets: inherit`, so the release-please PAT becomes an explicit
-input ([integration-contract.md](integration-contract.md)). The fleet cutover from
+Action cannot use `secrets: inherit`, so a real-actor PAT becomes the explicit
+`token` input ([integration-contract.md](integration-contract.md)). The fleet cutover from
 the reusable workflow to this Action is a coordinated migration; once every consumer
 has migrated, the reusable workflow in `@rmartz/bot-automerge` is retired.

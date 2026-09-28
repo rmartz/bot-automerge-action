@@ -15,7 +15,7 @@ Dependabot's `github-actions` ecosystem — they differ only in what your repo o
 | --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- |
 | Caller size                       | 3 lines                                                          | a full job                                         |
 | Skip guard for non-bot PRs        | **built in**                                                     | you copy it in                                     |
-| release-please PAT                | `secrets: inherit`                                               | explicit input                                     |
+| Real-actor PAT                    | `secrets: inherit`                                               | explicit `token` input                             |
 | You control the job's other steps | no                                                               | yes                                                |
 
 **Prefer the reusable workflow** unless you need the Action as a step inside a job
@@ -53,9 +53,10 @@ That is the whole caller. Notes:
   startup validation. The CLI installs from npmjs with no auth, so there's no
   `packages: read`. A pin to a reusable-workflow release from before the move
   still declares it, so keep granting it until Dependabot moves your pin past that.
-- **`secrets: inherit`** threads `RELEASE_PLEASE_PAT` through automatically. Nothing
-  to pass by hand, and nothing to forget — see
-  [the PAT note](#why-release-please-token-matters) below.
+- **`secrets: inherit`** threads a `BOT_AUTOMERGE_TOKEN` secret (or, for
+  compatibility, the older `RELEASE_PLEASE_PAT`) into the Action's `token`
+  automatically. Nothing to pass by hand — just create the secret; see
+  [the PAT note](#pass-a-real-actor-pat-as-token) below.
 - **The skip guard is built in.** A PR the CLI could never trust resolves as
   `skipped` without starting a runner. No `if:` in your repo to keep current.
 - **No `pr:` input needed** — it defaults to the caller's own `pull_request` event.
@@ -91,7 +92,7 @@ jobs:
       - uses: rmartz/bot-automerge-action@<sha> # vX.Y.Z
         with:
           pr: ${{ github.event.pull_request.number }}
-          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+          token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}
 ```
 
 Why each piece is there:
@@ -108,12 +109,41 @@ Why each piece is there:
   enough (the Action reads no repo history).
 - **`pr`** is required — pass `${{ github.event.pull_request.number }}`.
 
-### Why `release-please-token` matters
+- **`token`** is optional but recommended — see the next section.
 
-- **`release-please-token`** is optional. Set it to a real-actor PAT
-  (`${{ secrets.RELEASE_PLEASE_PAT }}`) if you use release-please and want a merged
-  release PR to re-trigger your release CD; omit it otherwise (it falls back to the
-  job token).
+## Pass a real-actor PAT as `token`
+
+GitHub attributes an auto-merge to whoever enabled it, and runs **no** workflows for
+events caused by the default `GITHUB_TOKEN`. So when auto-merge is enabled with
+`GITHUB_TOKEN`, the merged commit fires **none** of your push-triggered workflows —
+on either path. For a release-please PR that means no release CD
+([bot-automerge#8](https://github.com/rmartz/bot-automerge/issues/8)). For a
+Dependabot PR it silently skips your `push: [main]` CI, your release workflow, and
+merge-safety's base-moved invalidation, so several bumps can land back to back
+without `main` HEAD ever being tested.
+
+Pass a real-actor PAT (a fine-grained token with `contents: write` +
+`pull-requests: write` on the repo) and every step — the fork check, the Dependabot
+metadata fetch, and enabling auto-merge on both paths — runs as that actor:
+
+- **Shape A** reads it from a `BOT_AUTOMERGE_TOKEN` secret via `secrets: inherit`,
+  falling back to `RELEASE_PLEASE_PAT` if that is the name you already use.
+- **Shape B** takes it as the `token` input:
+  `token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}`.
+
+No `|| github.token` fallback is needed: an unset secret arrives as an empty
+string, and the Action falls back to `github.token` itself. Auto-merge still works
+then, but your push workflows will not fire after the merge.
+
+**Also store the PAT as a Dependabot secret.** A workflow run triggered by
+Dependabot receives only **Dependabot** secrets, never Actions secrets, so a PAT
+stored only as an Actions secret is empty on exactly the Dependabot runs that need
+it. Add the same secret name under _Settings → Secrets and variables → Dependabot_.
+
+> **`release-please-token` is deprecated.** It used to carry the PAT for the
+> release-please path only, which is how the Dependabot gap went unnoticed. It still
+> works — when set it overrides `token` on the release-please path and logs a
+> warning — but it will be removed in the next major. Move the PAT to `token`.
 
 ## Skip PRs that can never qualify (Shape B only)
 
@@ -145,7 +175,7 @@ name no longer qualifies.
 > Do **not** simplify this to an author test such as
 > `endsWith(github.event.pull_request.user.login, '[bot]')`. A release-please PR is
 > only authored by a `[bot]` account when release-please runs under the default
-> `GITHUB_TOKEN` — run it under a PAT (which is what `release-please-token` is for)
+> `GITHUB_TOKEN` — run it under a PAT (so its own merge fires your release CD)
 > and the PR is authored by that real user, so an author-only guard would silently
 > skip exactly the release PRs you wanted merged.
 
@@ -175,9 +205,9 @@ if the label is missing, the run logs a warning and still succeeds, because auto
 is already armed. It needs no permission beyond the `pull-requests: write` the job
 already has.
 
-On the release-please path, the label is applied with `release-please-token` (a real
-actor), so it fires one more `labeled` event and one extra run. That run is harmless:
-enabling auto-merge again is a no-op.
+When `token` is a real-actor PAT, the label is applied as that actor, so it fires
+one more `labeled` event and one extra run. That run is harmless: enabling
+auto-merge again is a no-op.
 
 ## Prerequisite — require `merge-safety` + your CI first
 
@@ -220,8 +250,8 @@ trigger, the write scopes and the eligibility behaviour are unchanged; you gain 
 built-in skip guard.
 
 Migrate to **Shape B** instead only if you want to own the job. Then the caller
-takes `runs-on` + `steps`, `secrets: inherit` becomes the explicit
-`release-please-token` input, and you add the skip guard yourself.
+takes `runs-on` + `steps`, `secrets: inherit` becomes the explicit `token`
+input, and you add the skip guard yourself.
 
 Either way you drop the predecessor's per-PR `concurrency` group, which is what
 left `cancelled` check-runs on PRs — see

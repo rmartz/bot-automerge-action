@@ -27,8 +27,12 @@ name: bot-automerge (reusable)
 # A called workflow runs with the INTERSECTION of the scopes it declares and the
 # scopes its caller grants, so the caller must grant all three below or the run
 # fails at startup validation. Unlike the Action shape, `secrets: inherit` works
-# here, so a release-please PAT no longer has to be threaded by hand — the
-# omission that silently disables release CD.
+# here, so a real-actor PAT no longer has to be threaded by hand — the omission
+# that silently skips the consumer's push workflows (CI, release CD) after a merge.
+# The PAT is read from BOT_AUTOMERGE_TOKEN, falling back to the legacy
+# RELEASE_PLEASE_PAT, and feeds the Action's single `token` input on both the
+# Dependabot and release-please paths. With neither set the Action falls back to
+# the job's GITHUB_TOKEN.
 
 on:
   workflow_call:
@@ -54,6 +58,19 @@ on:
         type: string
         required: false
         default: '22'
+    secrets:
+      BOT_AUTOMERGE_TOKEN:
+        description: >-
+          Real-actor PAT used for every step, so a merge fires the consumer's push
+          workflows. For Dependabot-triggered runs it must also exist as a
+          Dependabot secret. Optional; falls back to RELEASE_PLEASE_PAT, then the
+          job's GITHUB_TOKEN.
+        required: false
+      RELEASE_PLEASE_PAT:
+        description: >-
+          Legacy name for BOT_AUTOMERGE_TOKEN, still accepted for compatibility.
+          Used only when BOT_AUTOMERGE_TOKEN is unset.
+        required: false
 
 permissions:
   contents: write # enable GitHub-native auto-merge on the PR
@@ -104,6 +121,6 @@ jobs:
       - uses: $/
         with:
           pr: ${{ inputs.pr != '' && inputs.pr || github.event.pull_request.number }}
-          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+          token: ${{ secrets.BOT_AUTOMERGE_TOKEN || secrets.RELEASE_PLEASE_PAT }}
           update-type: ${{ inputs.update-type }}
           node-version: ${{ inputs.node-version }}
