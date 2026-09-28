@@ -12,11 +12,13 @@ name: bot-automerge
 # repo deliberately dogfoods the Action directly, and what that leaves uncovered.
 # A composite action cannot declare its own triggers, hold
 # write scopes, or use `secrets: inherit`, so this caller carries the trigger,
-# grants the write permissions, and passes the release-please PAT as an explicit
-# input (`release-please-token`). This repo publishes via semantic-release, not
-# release-please, so its own bot PRs take the Dependabot path; the release-please
-# input is passed for parity with the consumer contract and falls back to the job
-# token when the secret is unset.
+# grants the write permissions, and passes the PAT as the explicit `token` input —
+# the single token every step uses, on both the Dependabot and release-please paths.
+# A real-actor PAT matters here: GitHub runs no workflows for a merge enabled with
+# GITHUB_TOKEN, so without it a merged bot PR would not fire the release workflow.
+# It takes BOT_AUTOMERGE_TOKEN, else RELEASE_PLEASE_PAT, and the action falls back
+# to the job token when both secrets are unset. (The PAT must also be a Dependabot
+# secret, since Dependabot-triggered runs cannot read Actions secrets.)
 
 on:
   pull_request_target:
@@ -48,4 +50,4 @@ jobs:
       - uses: ./
         with:
           pr: ${{ github.event.pull_request.number }}
-          release-please-token: ${{ secrets.RELEASE_PLEASE_PAT }}
+          token: ${{ secrets.BOT_AUTOMERGE_TOKEN || secrets.RELEASE_PLEASE_PAT }}
