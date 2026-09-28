@@ -8,15 +8,20 @@ branding:
 
 # A composite action that wraps the @rmartz/bot-automerge CLI. The consuming repo's
 # caller job runs on pull_request_target and grants contents:write +
-# pull-requests:write (+ packages:read for the install); this action classifies the
-# PR and, when it is a trusted bot bump, enables GitHub-native auto-merge. The CLI
+# pull-requests:write; this action classifies the PR and, when it is a trusted bot
+# bump, enables GitHub-native auto-merge. The CLI
 # version is the one pinned in this action's package-lock.json (bumped by Dependabot
 # + released as a new action version), so a given action ref enforces a reproducible
 # eligibility policy. See docs/design/integration-contract.md.
 #
 # NOTE: a composite action CANNOT use `secrets: inherit` (that is a
-# reusable-workflow-only feature), so the release-please PAT is passed as an
-# EXPLICIT input (`release-please-token`), not inherited — see docs/consuming.md.
+# reusable-workflow-only feature), so a real-actor PAT is passed as the EXPLICIT
+# `token` input, not inherited — see docs/consuming.md.
+#
+# Every step resolves its token as `inputs.token || github.token`: an unset secret
+# passed as `token: ${{ secrets.X }}` arrives as an empty string, which overrides
+# the input default rather than falling back to it. Resolving per step means
+# callers never need their own `|| github.token`.
 
 inputs:
   pr:
@@ -30,19 +35,19 @@ inputs:
     required: true
   token:
     description: >-
-      Token used to read the PR and, on the Dependabot path, to enable
-      auto-merge. Defaults to the workflow GITHUB_TOKEN, which needs
-      contents:write + pull-requests:write on the job. The CLI itself installs
-      from npmjs with no auth, so `packages: read` is no longer needed.
+      Token used by every step: the fork check, the Dependabot metadata fetch, and
+      enabling auto-merge on both the Dependabot and release-please paths. Pass a
+      real-actor PAT so the merge fires the consumer's push workflows (CI, release
+      CD) — GitHub runs no workflows for a merge enabled with the workflow
+      GITHUB_TOKEN. Empty or unset (an unset secret) falls back to the workflow
+      GITHUB_TOKEN, which needs contents:write + pull-requests:write on the job.
     required: false
     default: ${{ github.token }}
   release-please-token:
     description: >-
-      Token used to enable auto-merge on the release-please / other-bot path.
-      Enabling auto-merge with a real-actor PAT here (rather than GITHUB_TOKEN) lets
-      the merged release PR re-trigger the consumer's release CD — a GITHUB_TOKEN
-      merge does not fire further workflows (bot-automerge#8). Falls back to `token`
-      when unset.
+      DEPRECATED — pass the PAT as `token` instead; this input will be removed in
+      the next major. When set, it still overrides `token` on the release-please /
+      other-bot path only, and the run logs a deprecation warning.
     required: false
     default: ''
   update-type:
@@ -72,7 +77,7 @@ runs:
       id: origin
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.token }}
+        GH_TOKEN: ${{ inputs.token != '' && inputs.token || github.token }}
         PR_NUMBER: ${{ inputs.pr }}
         REPO: ${{ github.repository }}
       run: |
@@ -108,12 +113,12 @@ runs:
       if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login == 'dependabot[bot]' && inputs.update-type == ''
       uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
       with:
-        github-token: ${{ inputs.token }}
+        github-token: ${{ inputs.token != '' && inputs.token || github.token }}
     - name: Enable auto-merge (Dependabot)
       if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login == 'dependabot[bot]'
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.token }}
+        GH_TOKEN: ${{ inputs.token != '' && inputs.token || github.token }}
         PR_NUMBER: ${{ inputs.pr }}
         REPO: ${{ github.repository }}
         UPDATE_TYPE: ${{ inputs.update-type != '' && inputs.update-type || steps.metadata.outputs.update-type }}
@@ -122,13 +127,20 @@ runs:
         --pr "${PR_NUMBER}" --repo "${REPO}" --update-type "${UPDATE_TYPE}"
     # Any other author (release-please or another bot) — the CLI detects
     # release-please itself and no-ops on anything it does not trust. No update-type
-    # is passed on this path. Uses the real-actor PAT when provided so a merged
-    # release PR re-triggers the consumer's release CD; falls back to `token`.
+    # is passed on this path. The deprecated `release-please-token`, when set, still
+    # overrides `token` here for callers that have not moved their PAT yet.
+    - name: Warn on deprecated release-please-token
+      if: inputs.release-please-token != ''
+      shell: bash
+      run: >-
+        echo "::warning title=bot-automerge-action::The release-please-token input is
+        deprecated and will be removed in the next major. Pass the PAT as token
+        instead; it now governs both the Dependabot and release-please paths."
     - name: Enable auto-merge (release-please / other bot)
       if: steps.origin.outputs.trusted == 'true' && github.event.pull_request.user.login != 'dependabot[bot]'
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.release-please-token != '' && inputs.release-please-token || inputs.token }}
+        GH_TOKEN: ${{ inputs.release-please-token != '' && inputs.release-please-token || (inputs.token != '' && inputs.token || github.token) }}
         PR_NUMBER: ${{ inputs.pr }}
         REPO: ${{ github.repository }}
       run: >-
