@@ -28,6 +28,7 @@ updates:
     # release into a new Action release. Stacked on the consumers' own weekly
     # github-actions pin bump, a weekly interval here could delay a CLI fix ~2
     # weeks before it reaches the fleet; daily cuts this repo's share to ≤1 day.
+    # That bound holds only because the CLI is exempt from the cooldown below.
     schedule:
       interval: daily
     commit-message:
@@ -62,6 +63,14 @@ updates:
         update-types:
           - minor
           - patch
+    cooldown:
+      # Since 2026-07-14 Dependabot waits 3 days after a release before proposing
+      # it. @rmartz/bot-automerge is first-party, published from rmartz/bot-automerge
+      # with npm provenance, so the wait buys no supply-chain safety and just holds
+      # its fixes back. Exempting it lets a new CLI version arrive on the next daily
+      # run. Every other dependency keeps the default cooldown.
+      exclude:
+        - '@rmartz/bot-automerge'
     ignore:
       # conventional-changelog-conventionalcommits@10 requires changelog-writer@9,
       # but @semantic-release/release-notes-generator@14 ships writer@8, so a v10
