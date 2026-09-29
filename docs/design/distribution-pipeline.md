@@ -36,7 +36,9 @@ picking it up.
    [`merge-safety`](https://github.com/rmartz/merge-safety) verdict — so nothing
    merges ahead of green.
 4. **Release.** On merge to `main`,
-   [`release.yml`](../../.github/workflows/release.yml) runs semantic-release.
+   [`release.yml`](../../.github/workflows/release.yml) runs semantic-release
+   through the fleet's shared
+   [semantic-release-ci](https://github.com/rmartz/semantic-release-ci) workflow.
    [`.releaserc.json`](../../.releaserc.json) uses the conventionalcommits preset,
    which maps `fix` → **patch** and `feat` → **minor** (a `!` marker → **major**), so
    the CLI bump cuts a new tag + GitHub Release at the mirrored level.
@@ -45,10 +47,11 @@ picking it up.
    `@semantic-release/git`), so the built-in `GITHUB_TOKEN` suffices — no PAT.
    Because `release.yml` only runs post-merge, a broken release toolchain would
    otherwise surface only after an auto-merged bump lands and silently stall this
-   chain. The `Release dry-run` job in [`ci.yml`](../../.github/workflows/ci.yml)
-   guards against that by rendering the release notes on every PR via a
-   `--dry-run` semantic-release invocation, so a toolchain regression fails the PR
-   instead.
+   chain. The required `release-check / release-check` check
+   ([`release-check.yml`](../../.github/workflows/release-check.yml)) guards against
+   that by rendering the release notes with the shared toolchain on every PR, so a
+   broken release config fails the PR instead. Toolchain bumps themselves are tested
+   once, in semantic-release-ci, before they reach the pin here.
 
 A **major** CLI bump falls out of the auto-merge set into its own PR for a human to
 review (the `production-dependencies` Dependabot group is patch/minor only). A CLI
