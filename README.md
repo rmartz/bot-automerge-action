@@ -122,10 +122,11 @@ Full docs, written in [Open Knowledge Format](docs/okf-format.md), start at
 Versioned by [semantic-release](https://semantic-release.gitbook.io/): a merge to
 `main` cuts the tag + GitHub Release. It publishes no package and commits nothing
 back. A Dependabot `fix(deps)` bump of `@rmartz/bot-automerge` cuts a patch
-release, which is how new eligibility logic reaches consumers. A `Release dry-run`
-CI job validates the semantic-release config (that the changelog toolchain renders)
-on every PR, so a broken release setup is caught before merge rather than on the
-post-merge release run.
+release, which is how new eligibility logic reaches consumers. Releases run through
+the fleet's shared [semantic-release-ci](https://github.com/rmartz/semantic-release-ci)
+workflows, whose required `release-check / release-check` check renders the release
+notes with the shared toolchain on every PR, so a broken release setup is caught
+before merge rather than on the post-merge release run.
 
 ---
 
