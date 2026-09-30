@@ -20,9 +20,10 @@ picking it up.
    npm ecosystem uses `commit-message.prefix: fix` for production deps). The npm
    ecosystem runs **daily** (the `github-actions` one stays weekly — its bumps cut
    no release), and the CLI is exempt from Dependabot's default 3-day release
-   cooldown since it's first-party (other dependencies keep that cooldown), so
-   this hop adds at most a day before the consumers' own Dependabot pick-up in
-   step 5.
+   cooldown since it's first-party, so this hop adds at most a day before the
+   consumers' own Dependabot pick-up in step 5. The exemption covers every
+   first-party name — `@rmartz/*` npm packages and `rmartz/*` action and
+   reusable-workflow pins; third-party dependencies keep the cooldown.
 2. **Map the release type.** The
    [`dependabot-release-type`](../../.github/workflows/dependabot-release-type.yml)
    workflow rewrites that title to mirror the CLI's semver bump into the Action's
