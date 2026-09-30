@@ -38,7 +38,7 @@ qualify) are the CLI's; see the
    npmjs with no auth.
 3. On a Dependabot PR, runs `dependabot/fetch-metadata` (unless an `update-type`
    override is supplied) to obtain the semver update-type.
-4. Invokes `ai-bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`,
+4. Invokes `bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`,
    which classifies the PR and, when it is eligible, runs `gh pr merge --auto --squash`
    to turn on native auto-merge.
 

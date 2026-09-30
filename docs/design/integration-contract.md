@@ -18,8 +18,8 @@ evolve independently.
   (`https://registry.npmjs.org/`, with provenance). Installs with no auth. Versions
   up to 0.2.1 were also published to GitHub Packages, which older Action releases
   installed from.
-- **CLI (bin):** `ai-bot-automerge`. The action invokes it as
-  `ai-bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`. The CLI
+- **CLI (bin):** `bot-automerge`. The action invokes it as
+  `bot-automerge enable --pr <n> --repo <owner/repo> [--update-type <t>]`. The CLI
   classifies the PR and, when it is eligible, runs `gh pr merge --auto --squash`. Its
   eligibility rules and exit-code semantics are the
   [eligibility contract](https://github.com/rmartz/bot-automerge/blob/main/docs/bot-automerge-contract.md).
@@ -102,7 +102,7 @@ A composite action runs in the **consumer's** checkout, but its own
 1. runs `npm ci` with `working-directory: ${{ github.action_path }}` — installing the
    pinned CLI into the action's own `node_modules`, not the consumer's tree; and
 2. invokes the CLI by absolute path
-   (`${GITHUB_ACTION_PATH}/node_modules/.bin/ai-bot-automerge`).
+   (`${GITHUB_ACTION_PATH}/node_modules/.bin/bot-automerge`).
 
 Unlike a hygiene checker, the CLI does **not** scan the consumer workspace — it
 operates on the PR through the GitHub API using the GH token in its environment. The
