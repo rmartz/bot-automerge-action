@@ -96,8 +96,7 @@ jobs:
     # Deliberately NOT an author test. release-please authors its PR as a [bot]
     # account only under the default GITHUB_TOKEN; run under a PAT it is authored
     # by that real user, so `endsWith(login, '[bot]')` would skip exactly the
-    # release PRs a consumer wanted merged. In rmartz/ai-tools those PRs are
-    # authored by `rmartz`.
+    # release PRs a consumer wanted merged.
     #
     # A fork PR is always skipped (GHSA-39fm-72q5-676g): a fork picks its own
     # branch name, so it can pose as release-please. The Action rejects fork PRs

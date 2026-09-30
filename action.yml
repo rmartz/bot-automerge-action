@@ -123,7 +123,7 @@ runs:
         REPO: ${{ github.repository }}
         UPDATE_TYPE: ${{ inputs.update-type != '' && inputs.update-type || steps.metadata.outputs.update-type }}
       run: >-
-        "${GITHUB_ACTION_PATH}/node_modules/.bin/ai-bot-automerge" enable
+        "${GITHUB_ACTION_PATH}/node_modules/.bin/bot-automerge" enable
         --pr "${PR_NUMBER}" --repo "${REPO}" --update-type "${UPDATE_TYPE}"
     # Any other author (release-please or another bot) — the CLI detects
     # release-please itself and no-ops on anything it does not trust. No update-type
@@ -144,5 +144,5 @@ runs:
         PR_NUMBER: ${{ inputs.pr }}
         REPO: ${{ github.repository }}
       run: >-
-        "${GITHUB_ACTION_PATH}/node_modules/.bin/ai-bot-automerge" enable
+        "${GITHUB_ACTION_PATH}/node_modules/.bin/bot-automerge" enable
         --pr "${PR_NUMBER}" --repo "${REPO}"
