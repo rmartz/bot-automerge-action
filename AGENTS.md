@@ -45,10 +45,11 @@ off-limits because bootstrap once seeded it.
 
 - **Updates arrive the self-updating way:** the `repo-hygiene`, `merge-safety`,
   `pr-policy`, and `bot-automerge` callers and (once released) this Action's own pin in consumers are
-  bumped by Dependabot; CI (incl. PR-title lint + the `commit-convention` tripwire),
+  bumped by Dependabot; CI (incl. the `commit-convention` tripwire),
   labels, the hardened `dependabot.yml`, and the squash-merge setting are owned here.
 - **PR policy:** [`pr-policy.yml`](.github/workflows/pr-policy.yml) runs the
-  released `rmartz/pr-policy-action` on this repo's PRs. It passes
+  released `rmartz/pr-policy-action` on this repo's PRs. Its `title` check, part
+  of the `pr-policy` check, validates PR titles (Conventional Commits). It passes
   `skip-uat: true` because the repo ships only an Action, so there is nothing to
   user-test.
 - `ai-ensure-labels` / `ai-verify-squash-setting` are useful one-shot helpers, but
@@ -124,7 +125,7 @@ in its own PR rather than riding along with unrelated work.
 - **Work in a dedicated worktree** under `.git-worktrees/` (`ai-new-worktree`),
   never on `main` in the root checkout. Run `npm ci` in a fresh worktree.
 - **PR titles must be Conventional Commits** (`feat:`, `fix:`, `docs:`, `chore:`,
-  `ci:`, …). Render PR/issue numbers as full Markdown links in chat and agent
+  `ci:`, …), checked by pr-policy's `title` check. Render PR/issue numbers as full Markdown links in chat and agent
   output (e.g. `[#12](https://github.com/rmartz/bot-automerge-action/pull/12)`),
   never a bare `#12`.
 
