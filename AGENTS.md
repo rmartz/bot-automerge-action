@@ -43,10 +43,14 @@ Bootstrap (`ai-ensure-*`) is a one-time new-repo starter, not an ongoing manager
 do not defer a fix to a bootstrap re-run, and do not treat a `.github/` file as
 off-limits because bootstrap once seeded it.
 
-- **Updates arrive the self-updating way:** the `repo-hygiene`, `merge-safety`, and
-  `bot-automerge` callers and (once released) this Action's own pin in consumers are
+- **Updates arrive the self-updating way:** the `repo-hygiene`, `merge-safety`,
+  `pr-policy`, and `bot-automerge` callers and (once released) this Action's own pin in consumers are
   bumped by Dependabot; CI (incl. PR-title lint + the `commit-convention` tripwire),
   labels, the hardened `dependabot.yml`, and the squash-merge setting are owned here.
+- **PR policy:** [`pr-policy.yml`](.github/workflows/pr-policy.yml) runs the
+  released `rmartz/pr-policy-action` on this repo's PRs. It passes
+  `skip-uat: true` because the repo ships only an Action, so there is nothing to
+  user-test.
 - `ai-ensure-labels` / `ai-verify-squash-setting` are useful one-shot helpers, but
   this repo owns its `.github/` config going forward.
 
