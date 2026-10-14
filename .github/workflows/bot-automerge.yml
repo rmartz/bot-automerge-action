@@ -12,13 +12,17 @@ name: bot-automerge
 # repo deliberately dogfoods the Action directly, and what that leaves uncovered.
 # A composite action cannot declare its own triggers, hold
 # write scopes, or use `secrets: inherit`, so this caller carries the trigger,
-# grants the write permissions, and passes the PAT as the explicit `token` input —
-# the single token every step uses, on both the Dependabot and release-please paths.
-# A real-actor PAT matters here: GitHub runs no workflows for a merge enabled with
-# GITHUB_TOKEN, so without it a merged bot PR would not fire the release workflow.
-# It takes BOT_AUTOMERGE_TOKEN, else RELEASE_PLEASE_PAT, and the action falls back
-# to the job token when both secrets are unset. (The PAT must also be a Dependabot
-# secret, since Dependabot-triggered runs cannot read Actions secrets.)
+# grants the write permissions, and passes the merge token as the explicit `token`
+# input — the single token every step uses, on both the Dependabot and
+# release-please paths.
+#
+# That token is an installation token for the rmartz-merge-bot GitHub App — never
+# GITHUB_TOKEN. GitHub runs no workflows for a merge enabled with GITHUB_TOKEN, so a
+# merged bot PR would not fire the release workflow. App-authored events do trigger
+# workflows, and the App draws on its own rate-limit pool rather than the user's, so
+# a coordinator run that exhausts the user's GraphQL quota (which a real-actor PAT
+# shares) cannot fail this job, and merges are attributed to the bot rather than the
+# user (rmartz/scripts#22).
 
 on:
   pull_request_target:
@@ -47,7 +51,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The App's Client ID and private key are stored as both Actions and
+      # Dependabot secrets (a Dependabot-triggered run sees only the latter).
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.MERGE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MERGE_BOT_PRIVATE_KEY }}
       - uses: ./
         with:
           pr: ${{ github.event.pull_request.number }}
-          token: ${{ secrets.BOT_AUTOMERGE_TOKEN || secrets.RELEASE_PLEASE_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
