@@ -49,13 +49,13 @@ makes the PR _eligible_ to merge itself once those pass.
 
 ## Inputs
 
-| Input                  | Default               | Meaning                                                                                                                 |
-| ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                                                        |
+| Input                  | Default               | Meaning                                                                                                                              |
+| ---------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                                                                     |
 | `token`                | `${{ github.token }}` | Token for every step; pass a GitHub App token (or a PAT) so the merge fires your push workflows. Empty falls back to `github.token`. |
-| `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please / other-bot path, with a warning. |
-| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.                                 |
-| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                     |
+| `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please / other-bot path, with a warning.              |
+| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.                                              |
+| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                                  |
 
 There is deliberately **no `version` input** (unlike the reusable workflow): the
 installed CLI version is the one pinned in this Action's lockfile, bumped by
