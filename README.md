@@ -61,8 +61,8 @@ jobs:
 
 **Shape B — the composite Action.** Use this when you want the step inside a job you
 own. A composite Action **cannot** declare its own triggers or use
-`secrets: inherit`, so this caller owns the job and passes any PAT as an explicit
-input — and owns the skip guard too:
+`secrets: inherit`, so this caller owns the job and passes its merge token as an
+explicit input — and owns the skip guard too:
 
 ```yaml
 # .github/workflows/bot-automerge.yml (same on:/permissions: as above)
@@ -72,11 +72,28 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@<sha> # v7.0.1
+      - uses: actions/create-github-app-token@<sha> # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.MERGE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MERGE_BOT_PRIVATE_KEY }}
       - uses: rmartz/bot-automerge-action@<sha> # vX.Y.Z
         with:
           pr: ${{ github.event.pull_request.number }}
-          token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 ```
+
+**Supply a GitHub App token (recommended) or a PAT.** A merge enabled with the
+default `GITHUB_TOKEN` fires none of your push workflows (CI on `main`, release CD),
+so give the Action a credential whose events do. A GitHub App installation token is
+recommended: a PAT shares its user's per-user rate-limit pool with every other token
+that user holds, so anything draining it fails this job too, and it attributes every
+merge to that person rather than to a bot. For Shape A, set the
+`MERGE_BOT_CLIENT_ID` + `MERGE_BOT_PRIVATE_KEY` secrets and the wrapper mints the
+token for you; for Shape B, add the `create-github-app-token` step above. A
+`BOT_AUTOMERGE_TOKEN` PAT remains a supported fallback. Store whichever credentials
+you use as **both** Actions and Dependabot secrets — a Dependabot-triggered run sees
+only the latter. Details in [the consumer setup guide](docs/consuming.md#pass-a-merge-token-as-token).
 
 > **Require `merge-safety` + your CI checks on the default branch _before_ adopting
 > this.** `gh pr merge --auto` merges a PR immediately if the repo has no required
@@ -92,13 +109,13 @@ workflow declares. Drop it once Dependabot moves your pin past that.
 
 ### Inputs
 
-| Input                  | Default               | Meaning                                                                                                                 |
-| ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                                                        |
-| `token`                | `${{ github.token }}` | Token for every step; pass a real-actor PAT so the merge fires your push workflows. Empty falls back to `github.token`. |
-| `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please path, with a warning.             |
-| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via fetch-metadata.                                   |
-| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                     |
+| Input                  | Default               | Meaning                                                                                                                              |
+| ---------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `pr`                   | _(required)_          | PR number to classify and enable auto-merge for.                                                                                     |
+| `token`                | `${{ github.token }}` | Token for every step; pass a GitHub App token (or a PAT) so the merge fires your push workflows. Empty falls back to `github.token`. |
+| `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please path, with a warning.                          |
+| `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via fetch-metadata.                                                |
+| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                                  |
 
 There is no `version` input — the CLI version is the one pinned in this Action's
 lockfile.
