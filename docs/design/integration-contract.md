@@ -78,19 +78,37 @@ Both guards key off the PR **author**, which is robust across
 opened/synchronize/labeled events — unlike `github.actor`, which can be a human who
 relabeled the PR.
 
-## Why the PAT is an explicit `token` input
+## Why the merge token is an explicit `token` input
 
 A composite Action cannot use `secrets: inherit` (a reusable-workflow-only feature),
 and secrets do not flow implicitly into a composite Action. The predecessor reusable
 workflow reached `RELEASE_PLEASE_PAT` via `secrets: inherit`; here a Shape B
-consumer passes its PAT as the `token` input. This is the one behavioral difference
-a migrating consumer must make — see [consuming.md](../consuming.md). This repo's
-Shape A wrapper still uses `secrets: inherit` and threads `BOT_AUTOMERGE_TOKEN`
-(falling back to the legacy `RELEASE_PLEASE_PAT`) into `token` itself.
+consumer passes its merge token as the `token` input. This is the one behavioral
+difference a migrating consumer must make — see [consuming.md](../consuming.md).
+
+The Action itself only ever sees one opaque `token`; how it is supplied is the
+caller's concern:
+
+- **Recommended — a GitHub App installation token.** A Shape B caller mints it in a
+  preceding `actions/create-github-app-token` step and passes
+  `steps.app-token.outputs.token`. An App has its own rate-limit pool, where a PAT
+  shares its user's per-user pool with every other token that user holds, and it
+  attributes merges to a bot rather than a person; App-authored events still fire
+  push workflows.
+- **Shape A does this itself.** This repo's wrapper still uses `secrets: inherit`.
+  When both `MERGE_BOT_CLIENT_ID` and `MERGE_BOT_PRIVATE_KEY` are present it mints
+  the installation token and passes it as `token`; otherwise it threads
+  `BOT_AUTOMERGE_TOKEN` (falling back to the legacy `RELEASE_PLEASE_PAT`). Because
+  the `secrets` context is unavailable in a step `if:`, the wrapper computes a
+  job-level `HAS_MERGE_BOT_APP` boolean and gates the minting step on it; with
+  either App secret missing the step is skipped and the token resolves exactly as it
+  did before App support.
+- **Supported fallback — a real-actor PAT**, passed as `token` directly (Shape B) or
+  via `BOT_AUTOMERGE_TOKEN` (Shape A).
 
 One input governs both paths because a `GITHUB_TOKEN`-enabled merge fires none of
 the consumer's push workflows on either path. The old split — `token` for
-Dependabot, `release-please-token` for release PRs — implied the PAT mattered only
+Dependabot, `release-please-token` for release PRs — implied the token mattered only
 for release CD, and let the Dependabot gap go unnoticed.
 
 ## The action-path vs API-operation split

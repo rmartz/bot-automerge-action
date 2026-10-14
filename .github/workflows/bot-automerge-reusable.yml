@@ -25,14 +25,21 @@ name: bot-automerge (reusable)
 # https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/
 #
 # A called workflow runs with the INTERSECTION of the scopes it declares and the
-# scopes its caller grants, so the caller must grant all three below or the run
-# fails at startup validation. Unlike the Action shape, `secrets: inherit` works
-# here, so a real-actor PAT no longer has to be threaded by hand — the omission
-# that silently skips the consumer's push workflows (CI, release CD) after a merge.
-# The PAT is read from BOT_AUTOMERGE_TOKEN, falling back to the legacy
-# RELEASE_PLEASE_PAT, and feeds the Action's single `token` input on both the
-# Dependabot and release-please paths. With neither set the Action falls back to
-# the job's GITHUB_TOKEN.
+# scopes its caller grants, so the caller must grant both below or the run fails
+# at startup validation. Unlike the Action shape, `secrets: inherit` works here, so
+# the merge credential no longer has to be threaded by hand — the omission that
+# silently skips the consumer's push workflows (CI, release CD) after a merge.
+#
+# The token fed to the Action's single `token` input (both the Dependabot and
+# release-please paths) is resolved in this order:
+#   1. MERGE_BOT_CLIENT_ID + MERGE_BOT_PRIVATE_KEY both set → a short-lived
+#      installation token for that GitHub App, minted per run. Recommended: the App
+#      has its own rate-limit pool (a PAT shares its user's pool with every other
+#      token that user holds) and merges are attributed to the bot, while
+#      App-authored events still fire the consumer's push workflows.
+#   2. Otherwise the real-actor PAT in BOT_AUTOMERGE_TOKEN, falling back to the
+#      legacy RELEASE_PLEASE_PAT.
+#   3. With none of these set the Action falls back to the job's GITHUB_TOKEN.
 
 on:
   workflow_call:
@@ -59,12 +66,26 @@ on:
         required: false
         default: '22'
     secrets:
+      MERGE_BOT_CLIENT_ID:
+        description: >-
+          Client ID of a GitHub App installed on the repo with contents:write +
+          pull-requests:write. With MERGE_BOT_PRIVATE_KEY, the workflow mints an
+          installation token and uses it for every step instead of any PAT. For
+          Dependabot-triggered runs it must also exist as a Dependabot secret.
+          Optional; ignored unless MERGE_BOT_PRIVATE_KEY is also set.
+        required: false
+      MERGE_BOT_PRIVATE_KEY:
+        description: >-
+          Private key (PEM) of the GitHub App named by MERGE_BOT_CLIENT_ID. For
+          Dependabot-triggered runs it must also exist as a Dependabot secret.
+          Optional; ignored unless MERGE_BOT_CLIENT_ID is also set.
+        required: false
       BOT_AUTOMERGE_TOKEN:
         description: >-
-          Real-actor PAT used for every step, so a merge fires the consumer's push
-          workflows. For Dependabot-triggered runs it must also exist as a
-          Dependabot secret. Optional; falls back to RELEASE_PLEASE_PAT, then the
-          job's GITHUB_TOKEN.
+          Real-actor PAT used for every step when no GitHub App is configured, so a
+          merge fires the consumer's push workflows. For Dependabot-triggered runs
+          it must also exist as a Dependabot secret. Optional; falls back to
+          RELEASE_PLEASE_PAT, then the job's GITHUB_TOKEN.
         required: false
       RELEASE_PLEASE_PAT:
         description: >-
@@ -113,13 +134,29 @@ jobs:
       || startsWith(github.event.pull_request.head.ref, 'release-please--'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # The `secrets` context is not available in a step `if:`, so whether a GitHub
+    # App is configured is computed here, at job level where it is, and the
+    # token-minting step gates on this boolean ('true' / 'false') instead. Only the
+    # boolean is exposed, never the secret values.
+    env:
+      HAS_MERGE_BOT_APP: ${{ secrets.MERGE_BOT_CLIENT_ID != '' && secrets.MERGE_BOT_PRIVATE_KEY != '' }}
     # No checkout: `$/` is resolved by the runner, and the Action installs its
     # pinned CLI into its own directory and reaches the PR over the API — it never
     # reads the consumer's tree.
     steps:
+      # Mint a short-lived installation token for the consumer's GitHub App, scoped
+      # to the calling repository, when both App secrets are set. With either one
+      # unset the step is skipped, its output is empty, and `token` below falls
+      # through to the PAT exactly as before this step existed.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        if: env.HAS_MERGE_BOT_APP == 'true'
+        with:
+          client-id: ${{ secrets.MERGE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MERGE_BOT_PRIVATE_KEY }}
       - uses: $/
         with:
           pr: ${{ inputs.pr != '' && inputs.pr || github.event.pull_request.number }}
-          token: ${{ secrets.BOT_AUTOMERGE_TOKEN || secrets.RELEASE_PLEASE_PAT }}
+          token: ${{ steps.app-token.outputs.token || secrets.BOT_AUTOMERGE_TOKEN || secrets.RELEASE_PLEASE_PAT }}
           update-type: ${{ inputs.update-type }}
           node-version: ${{ inputs.node-version }}

@@ -15,7 +15,7 @@ Dependabot's `github-actions` ecosystem — they differ only in what your repo o
 | --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- |
 | Caller size                       | 3 lines                                                          | a full job                                         |
 | Skip guard for non-bot PRs        | **built in**                                                     | you copy it in                                     |
-| Real-actor PAT                    | `secrets: inherit`                                               | explicit `token` input                             |
+| Merge token (App or PAT)          | `secrets: inherit` (App token minted for you)                    | explicit `token` input (you mint the App token)    |
 | You control the job's other steps | no                                                               | yes                                                |
 
 **Prefer the reusable workflow** unless you need the Action as a step inside a job
@@ -53,10 +53,13 @@ That is the whole caller. Notes:
   startup validation. The CLI installs from npmjs with no auth, so there's no
   `packages: read`. A pin to a reusable-workflow release from before the move
   still declares it, so keep granting it until Dependabot moves your pin past that.
-- **`secrets: inherit`** threads a `BOT_AUTOMERGE_TOKEN` secret (or, for
-  compatibility, the older `RELEASE_PLEASE_PAT`) into the Action's `token`
-  automatically. Nothing to pass by hand — just create the secret; see
-  [the PAT note](#pass-a-real-actor-pat-as-token) below.
+- **`secrets: inherit`** hands the wrapper your merge credentials, and it feeds
+  the Action's `token` automatically. Nothing to pass by hand — just create the
+  secrets. Set `MERGE_BOT_CLIENT_ID` + `MERGE_BOT_PRIVATE_KEY` (recommended) and
+  the wrapper mints a GitHub App installation token each run; otherwise it uses a
+  `BOT_AUTOMERGE_TOKEN` PAT (or, for compatibility, the older
+  `RELEASE_PLEASE_PAT`). See [the token section](#pass-a-merge-token-as-token)
+  below.
 - **The skip guard is built in.** A PR the CLI could never trust resolves as
   `skipped` without starting a runner. No `if:` in your repo to keep current.
 - **No `pr:` input needed** — it defaults to the caller's own `pull_request` event.
@@ -89,10 +92,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@<sha> # v7.0.1
+      # Store the App's Client ID and private key as both Actions and Dependabot
+      # secrets (a Dependabot-triggered run sees only the latter).
+      - uses: actions/create-github-app-token@<sha> # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.MERGE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MERGE_BOT_PRIVATE_KEY }}
       - uses: rmartz/bot-automerge-action@<sha> # vX.Y.Z
         with:
           pr: ${{ github.event.pull_request.number }}
-          token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 ```
 
 Why each piece is there:
@@ -109,9 +119,11 @@ Why each piece is there:
   enough (the Action reads no repo history).
 - **`pr`** is required — pass `${{ github.event.pull_request.number }}`.
 
-- **`token`** is optional but recommended — see the next section.
+- **`token`** is optional but recommended — see the next section. To use a PAT
+  instead of the App, drop the `create-github-app-token` step and pass
+  `token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}`.
 
-## Pass a real-actor PAT as `token`
+## Pass a merge token as `token`
 
 GitHub attributes an auto-merge to whoever enabled it, and runs **no** workflows for
 events caused by the default `GITHUB_TOKEN`. So when auto-merge is enabled with
@@ -122,12 +134,45 @@ Dependabot PR it silently skips your `push: [main]` CI, your release workflow, a
 merge-safety's base-moved invalidation, so several bumps can land back to back
 without `main` HEAD ever being tested.
 
-Pass a real-actor PAT (a fine-grained token with `contents: write` +
-`pull-requests: write` on the repo) and every step — the fork check, the Dependabot
-metadata fetch, and enabling auto-merge on both paths — runs as that actor:
+Events caused by a GitHub App installation token or a real-actor PAT _do_ fire
+workflows. Pass either one and every step — the fork check, the Dependabot metadata
+fetch, and enabling auto-merge on both paths — runs as that identity.
 
-- **Shape A** reads it from a `BOT_AUTOMERGE_TOKEN` secret via `secrets: inherit`,
-  falling back to `RELEASE_PLEASE_PAT` if that is the name you already use.
+### Recommended — a GitHub App installation token
+
+Create a GitHub App with **Contents: read & write** and **Pull requests: read &
+write** repository permissions, install it on the repo, and store its Client ID and
+private key as the secrets `MERGE_BOT_CLIENT_ID` and `MERGE_BOT_PRIVATE_KEY`. Prefer
+it over a PAT because:
+
+- **It has its own rate-limit pool.** GitHub rate-limits per _user_, across every
+  token that user holds. A PAT therefore shares its GraphQL budget with everything
+  else the user runs — an agent or script that drains the budget fails this job
+  too. An App installation is limited separately.
+- **Merges are attributed to the bot**, not to a person, so automated merges are
+  distinguishable from human ones in the PR timeline and audit log.
+- **The token is short-lived** (an hour) and scoped to the calling repository,
+  instead of a long-lived credential.
+
+How each shape uses it:
+
+- **Shape A** does it for you: with both `MERGE_BOT_*` secrets present via
+  `secrets: inherit`, the wrapper mints the installation token with
+  [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
+  and passes it as `token`, ahead of any PAT. With either secret missing it skips
+  that step and behaves exactly as it did before App support.
+- **Shape B** adds the `create-github-app-token` step itself and passes
+  `token: ${{ steps.app-token.outputs.token }}`, as in the
+  [Shape B caller](#shape-b--the-composite-action) above.
+
+### Supported fallback — a real-actor PAT
+
+A fine-grained PAT with `contents: write` + `pull-requests: write` on the repo
+still works, with the rate-limit and attribution costs above:
+
+- **Shape A** reads it from a `BOT_AUTOMERGE_TOKEN` secret via `secrets: inherit`
+  when no App is configured, falling back to `RELEASE_PLEASE_PAT` if that is the
+  name you already use.
 - **Shape B** takes it as the `token` input:
   `token: ${{ secrets.BOT_AUTOMERGE_TOKEN }}`.
 
@@ -135,10 +180,13 @@ No `|| github.token` fallback is needed: an unset secret arrives as an empty
 string, and the Action falls back to `github.token` itself. Auto-merge still works
 then, but your push workflows will not fire after the merge.
 
-**Also store the PAT as a Dependabot secret.** A workflow run triggered by
-Dependabot receives only **Dependabot** secrets, never Actions secrets, so a PAT
-stored only as an Actions secret is empty on exactly the Dependabot runs that need
-it. Add the same secret name under _Settings → Secrets and variables → Dependabot_.
+### Store the credentials as Dependabot secrets too
+
+A workflow run triggered by Dependabot receives only **Dependabot** secrets, never
+Actions secrets, so a credential stored only as an Actions secret is empty on
+exactly the Dependabot runs that need it. Add the same secret names —
+`MERGE_BOT_CLIENT_ID` and `MERGE_BOT_PRIVATE_KEY`, or the PAT — under both
+_Settings → Secrets and variables → Actions_ and _→ Dependabot_.
 
 > **`release-please-token` is deprecated.** It used to carry the PAT for the
 > release-please path only, which is how the Dependabot gap went unnoticed. It still
@@ -205,7 +253,8 @@ if the label is missing, the run logs a warning and still succeeds, because auto
 is already armed. It needs no permission beyond the `pull-requests: write` the job
 already has.
 
-When `token` is a real-actor PAT, the label is applied as that actor, so it fires
+When `token` is a GitHub App installation token or a real-actor PAT, the label is
+applied as that identity, so it fires
 one more `labeled` event and one extra run. That run is harmless: enabling
 auto-merge again is a no-op.
 

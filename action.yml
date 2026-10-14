@@ -15,7 +15,8 @@ branding:
 # eligibility policy. See docs/design/integration-contract.md.
 #
 # NOTE: a composite action CANNOT use `secrets: inherit` (that is a
-# reusable-workflow-only feature), so a real-actor PAT is passed as the EXPLICIT
+# reusable-workflow-only feature), so the merge credential — a GitHub App
+# installation token (recommended) or a real-actor PAT — is passed as the EXPLICIT
 # `token` input, not inherited — see docs/consuming.md.
 #
 # Every step resolves its token as `inputs.token || github.token`: an unset secret
@@ -37,8 +38,10 @@ inputs:
     description: >-
       Token used by every step: the fork check, the Dependabot metadata fetch, and
       enabling auto-merge on both the Dependabot and release-please paths. Pass a
-      real-actor PAT so the merge fires the consumer's push workflows (CI, release
-      CD) — GitHub runs no workflows for a merge enabled with the workflow
+      GitHub App installation token (recommended; mint it with
+      actions/create-github-app-token) or a real-actor PAT so the merge fires the
+      consumer's push workflows (CI, release CD) — GitHub runs no workflows for a
+      merge enabled with the workflow
       GITHUB_TOKEN. Empty or unset (an unset secret) falls back to the workflow
       GITHUB_TOKEN, which needs contents:write + pull-requests:write on the job.
     required: false
