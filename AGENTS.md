@@ -50,8 +50,8 @@ off-limits because bootstrap once seeded it.
 - **PR policy:** [`pr-policy.yml`](.github/workflows/pr-policy.yml) runs the
   released `rmartz/pr-policy-action` on this repo's PRs. Its `title` check, part
   of the `pr-policy` check, validates PR titles (Conventional Commits). It passes
-  `skip-uat: true` because the repo ships only an Action, so there is nothing to
-  user-test.
+  `skip-uat: true`: the repo skips UAT by choice (the Action it ships is
+  user-facing, so this is a decision, not a claim there's nothing to test).
 - **PR lifecycle labels:** [`pr-lifecycle.yml`](.github/workflows/pr-lifecycle.yml)
   runs `rmartz/pr-lifecycle-action` without arming, with `uat: 'off'` matching `skip-uat`: it keeps each PR's lifecycle labels current, marks every PR `no UAT needed`, and posts the `pr-lifecycle/sign-off` status (as the `rmartz-pr-lifecycle` App, which the `pr-policy` caller trusts). `bot-automerge.yml` still does the
   merging.
