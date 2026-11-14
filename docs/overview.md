@@ -55,7 +55,7 @@ makes the PR _eligible_ to merge itself once those pass.
 | `token`                | `${{ github.token }}` | Token for every step; pass a GitHub App token (or a PAT) so the merge fires your push workflows. Empty falls back to `github.token`. |
 | `release-please-token` | `''` (→ `token`)      | **Deprecated** — use `token`. When set, still overrides `token` on the release-please / other-bot path, with a warning.              |
 | `update-type`          | `''`                  | Optional Dependabot semver update-type override; empty derives it via `fetch-metadata`.                                              |
-| `node-version`         | `'22'`                | Node.js version the CLI runs under.                                                                                                  |
+| `node-version`         | `'26'`                | Node.js version the CLI runs under (the current LTS by default; pass an older version to keep running on it).                        |
 
 There is deliberately **no `version` input** (unlike the reusable workflow): the
 installed CLI version is the one pinned in this Action's lockfile, bumped by
