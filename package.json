@@ -28,7 +28,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@rmartz/bot-automerge": "2.0.23"
+    "@rmartz/bot-automerge": "2.0.24"
   },
   "devDependencies": {
     "prettier": "^3.10.1"
