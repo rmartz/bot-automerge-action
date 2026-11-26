@@ -52,8 +52,9 @@ off-limits because bootstrap once seeded it.
   of the `pr-policy` check, validates PR titles (Conventional Commits). It passes
   `skip-uat: true`: the repo skips UAT by choice (the Action it ships is
   user-facing, so this is a decision, not a claim there's nothing to test).
-- **PR process:** each PR is driven by the session that opened it (draft,
-  self-review, ready when green, merge); no workflow manages lifecycle labels.
+- **PR process:** each PR is driven by the session that opened it: draft,
+  adversarial self-review, ready when CI is green and the review is clean, merge
+  on the user's go-ahead. No workflow manages lifecycle labels.
   `bot-automerge.yml` merges trusted bot PRs.
 - `ai-ensure-labels` / `ai-verify-squash-setting` are useful one-shot helpers, but
   this repo owns its `.github/` config going forward.
