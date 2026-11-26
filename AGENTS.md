@@ -52,9 +52,10 @@ off-limits because bootstrap once seeded it.
   of the `pr-policy` check, validates PR titles (Conventional Commits). It passes
   `skip-uat: true`: the repo skips UAT by choice (the Action it ships is
   user-facing, so this is a decision, not a claim there's nothing to test).
-- **PR lifecycle labels:** [`pr-lifecycle.yml`](.github/workflows/pr-lifecycle.yml)
-  runs `rmartz/pr-lifecycle-action` without arming, with `uat: 'off'` matching `skip-uat`: it keeps each PR's lifecycle labels current, marks every PR `no UAT needed`, and posts the `pr-lifecycle/sign-off` status (as the `rmartz-pr-lifecycle` App, which the `pr-policy` caller trusts). `bot-automerge.yml` still does the
-  merging.
+- **PR process:** each PR is driven by the session that opened it: draft,
+  adversarial self-review, ready when CI is green and the review is clean, merge
+  on the user's go-ahead. No workflow manages lifecycle labels.
+  `bot-automerge.yml` merges trusted bot PRs.
 - `ai-ensure-labels` / `ai-verify-squash-setting` are useful one-shot helpers, but
   this repo owns its `.github/` config going forward.
 
