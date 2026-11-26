@@ -61,7 +61,7 @@ on:
         required: false
         default: ''
       node-version:
-        description: Node.js version to run the CLI under. Defaults to 26, the current LTS; pass an older version to keep running on it.
+        description: Node.js version to run the CLI under. Pass an older version to keep running on it.
         type: string
         required: false
         default: '26'
