@@ -267,8 +267,9 @@ auto-merge again is a no-op.
 Adopt this Action **only after** the default branch requires
 [`merge-safety`](https://github.com/rmartz/merge-safety) and your own CI gates.
 Otherwise an eligible bot PR rides straight to `main` with nothing verifying it.
-See the
-[repository checklist → Automated bot-PR merge](https://github.com/rmartz/ai/blob/main/docs/guidance/repository-checklist.md#automated-bot-pr-merge).
+See the shared repository checklist's _Automated bot-PR merge_ section
+(`~/.claude/knowledge/guidance/repository-checklist.md` in the agent knowledge
+base).
 
 ## Keep the pin current
 

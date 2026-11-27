@@ -48,7 +48,7 @@ updates:
       # workflow rewrites it to mirror the CLI's semver bump (minor → feat(deps),
       # major → feat(deps)! + breaking-change label) so the Action release matches.
       # Dev deps never reach the shipped artifact, so `prefix-development: chore`
-      # keeps them release-less. (Codified in rmartz/ai#82.)
+      # keeps them release-less.
       prefix: fix
       prefix-development: chore
       include: scope
