@@ -21,4 +21,4 @@ permissions:
 
 jobs:
   release-check:
-    uses: rmartz/semantic-release-ci/.github/workflows/release-check.yml@2e412f0c9f4305929053db37cd973878bd2f4b97 # v3.0.2
+    uses: rmartz/semantic-release-ci/.github/workflows/release-check.yml@45d9f1e09b91d7f1800adc2414112182f1c3082b # v3.0.3
