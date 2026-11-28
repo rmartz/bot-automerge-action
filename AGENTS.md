@@ -36,8 +36,8 @@ The `docs/` bundle is a first-class part of this repo, not an afterthought. On
 
 ## Repository conformance
 
-This repo is held to the shared
-[repository checklist](https://github.com/rmartz/ai/blob/main/docs/guidance/repository-checklist.md)
+This repo is held to the shared repository checklist
+(`~/.claude/knowledge/guidance/repository-checklist.md` in the agent knowledge base)
 and **self-manages** its own config: fix conformance gaps directly here, in a PR.
 Bootstrap (`ai-ensure-*`) is a one-time new-repo starter, not an ongoing manager —
 do not defer a fix to a bootstrap re-run, and do not treat a `.github/` file as

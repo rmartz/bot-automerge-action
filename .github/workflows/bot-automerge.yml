@@ -22,7 +22,7 @@ name: bot-automerge
 # workflows, and the App draws on its own rate-limit pool rather than the user's, so
 # a coordinator run that exhausts the user's GraphQL quota (which a real-actor PAT
 # shares) cannot fail this job, and merges are attributed to the bot rather than the
-# user (rmartz/scripts#22).
+# user.
 
 on:
   pull_request_target:
